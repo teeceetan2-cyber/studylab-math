@@ -29,7 +29,9 @@ category = st.sidebar.selectbox("Category", [
 ])
 
 topic_map = {
-    "🔢 Algebra": ["Quadratic Equation"],
+    "🔢 Algebra": ["Quadratic Equation", "Exponential Functions",
+                    "Logarithmic Functions", "Square Root Functions",
+                    "Rational Functions", "Piecewise Functions"],
     "📐 Trigonometry": ["Trigonometry Explorer", "Unit Circle"],
     "📈 Calculus": ["Derivative Visualizer", "Integral Area"],
     "🧭 Vectors": ["2D Vector Explorer", "Vector Addition", "Dot Product",
@@ -39,6 +41,289 @@ topic_map = {
 }
 
 topic = st.sidebar.radio("Topic", topic_map[category])
+
+# ── Exponential Functions ────────────────────────────────
+if topic == "Exponential Functions":
+    st.markdown("## Exponential Functions")
+    st.latex(r"f(x) = a \cdot b^{cx + d} + k")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        a = st.slider("a (amplitude)", -5.0, 5.0, 1.0, 0.1, key="exp_a")
+        b = st.slider("b (base)", 0.1, 5.0, 2.0, 0.1, key="exp_b")
+        c = st.slider("c (stretch)", -3.0, 3.0, 1.0, 0.1, key="exp_c")
+    with col2:
+        d = st.slider("d (shift x)", -5.0, 5.0, 0.0, 0.1, key="exp_d")
+        k = st.slider("k (shift y)", -5.0, 5.0, 0.0, 0.1, key="exp_k")
+
+    x = np.linspace(-5, 5, 500)
+    y = a * (b ** (c * x + d)) + k
+    y = np.where(np.abs(y) > 50, np.nan, y)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name=f"{a}·{b}⁽{c}x+{d}⁾ + {k}",
+                              line=dict(color="#6366f1", width=2)))
+    # Horizontal asymptote
+    fig.add_hline(y=k, line=dict(color="#ef4444", width=1, dash="dash"),
+                  annotation_text=f"y = {k:.2f}", annotation_position="right")
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                      yaxis_range=[-10, 10], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown(
+        f'<div class="result-box">'
+        f'<strong>Asymptote:</strong> y = {k:.2f}<br>'
+        f'<strong>y-intercept:</strong> f(0) = {a * (b ** d) + k:.4f}<br>'
+        f'{"<strong>Growth</strong> (b > 1)" if b > 1 else "<strong>Decay</strong> (0 < b < 1)"}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+# ── Logarithmic Functions ────────────────────────────────
+elif topic == "Logarithmic Functions":
+    st.markdown("## Logarithmic Functions")
+    st.latex(r"f(x) = a \cdot \log_b(cx + d) + k")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        a = st.slider("a (amplitude)", -5.0, 5.0, 1.0, 0.1, key="log_a")
+        b = st.slider("b (base, >0, ≠1)", 0.5, 10.0, math.e, 0.1, key="log_b")
+        c = st.slider("c (stretch)", -3.0, 3.0, 1.0, 0.1, key="log_c")
+    with col2:
+        d = st.slider("d (shift)", -5.0, 5.0, 0.0, 0.1, key="log_d")
+        k = st.slider("k (vertical)", -5.0, 5.0, 0.0, 0.1, key="log_k")
+
+    # Domain: cx + d > 0  →  x > -d/c (if c>0) or x < -d/c (if c<0)
+    if abs(c) < 0.001:
+        st.error("c cannot be zero (no domain).")
+    else:
+        bound = -d / c
+        if c > 0:
+            x = np.linspace(bound + 0.01, bound + 6, 600)
+        else:
+            x = np.linspace(bound - 6, bound - 0.01, 600)
+        x = x[(x > -10) & (x < 10)]
+
+        arg = c * x + d
+        y = a * np.log(arg) / np.log(b) + k
+        y = np.where(arg <= 0, np.nan, y)
+        y = np.where(np.abs(y) > 50, np.nan, y)
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name=f"{a}·log_{{b}}(cx+{d})+{k}",
+                                  line=dict(color="#10b981", width=2)))
+        # Vertical asymptote
+        fig.add_vline(x=bound, line=dict(color="#ef4444", width=1, dash="dash"),
+                      annotation_text=f"x = {bound:.2f}", annotation_position="top")
+        fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+        fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+        fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                          yaxis_range=[-8, 8], hovermode="x")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown(
+            f'<div class="result-box">'
+            f'<strong>Domain:</strong> {{"x > " if c > 0 else "x < "}}{bound:.4f}<br>'
+            f'<strong>Vertical asymptote:</strong> x = {bound:.4f}<br>'
+            f'<strong>x-intercept:</strong> f(x) = 0 → x = {"e" if abs(b-math.e)<0.01 else "b"}^({-k/a}) = {bound + (b ** (-k/a)) / c:.4f}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+# ── Square Root Functions ────────────────────────────────
+elif topic == "Square Root Functions":
+    st.markdown("## Square Root Functions")
+    st.latex(r"f(x) = a \sqrt{cx + d} + k")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        a = st.slider("a (amplitude)", -5.0, 5.0, 1.0, 0.1, key="sqrt_a")
+        c = st.slider("c (stretch)", -3.0, 3.0, 1.0, 0.1, key="sqrt_c")
+    with col2:
+        d = st.slider("d (shift)", -5.0, 5.0, 0.0, 0.1, key="sqrt_d")
+        k = st.slider("k (vertical)", -5.0, 5.0, 0.0, 0.1, key="sqrt_k")
+
+    if abs(c) < 0.001:
+        st.error("c cannot be zero.")
+    else:
+        bound = -d / c
+        if c > 0:
+            x = np.linspace(max(bound, -10), 10, 500)
+        else:
+            x = np.linspace(-10, min(bound, 10), 500)
+
+        arg = c * x + d
+        arg_safe = np.where(arg < 0, 0, arg)
+        y = a * np.sqrt(arg_safe) + k
+        y = np.where(arg < 0, np.nan, y)
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name=f"{a}√({c}x+{d}) + {k}",
+                                  line=dict(color="#f59e0b", width=2)))
+        # Starting point marker
+        start_y = k
+        fig.add_trace(go.Scatter(x=[bound], y=[start_y], mode="markers",
+                                  marker=dict(size=8, color="#ef4444"),
+                                  name=f"Start ({bound:.2f}, {start_y:.2f})"))
+        fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+        fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+        fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                          yaxis_range=[-8, 8], hovermode="x")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown(
+            f'<div class="result-box">'
+            f'<strong>Domain:</strong> {{"x ≥ " if c > 0 else "x ≤ "}}{bound:.4f}<br>'
+            f'<strong>Starting point:</strong> ({bound:.4f}, {k:.4f})<br>'
+            f'<strong>y-intercept:</strong> f(0) = {a * math.sqrt(max(d, 0)) + k:.4f} (if 0 in domain)'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+# ── Rational Functions ───────────────────────────────────
+elif topic == "Rational Functions":
+    st.markdown("## Rational Functions")
+    st.latex(r"f(x) = \frac{ax + b}{cx + d}")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        a = st.slider("a (numerator)", -5.0, 5.0, 1.0, 0.1, key="rat_a")
+        b = st.slider("b (numerator)", -5.0, 5.0, 0.0, 0.1, key="rat_b")
+    with col2:
+        c = st.slider("c (denominator)", -5.0, 5.0, 1.0, 0.1, key="rat_c")
+        d = st.slider("d (denominator)", -5.0, 5.0, -2.0, 0.1, key="rat_d")
+
+    if abs(c) < 0.001:
+        st.error("c cannot be zero (denominator must depend on x).")
+    else:
+        x = np.linspace(-10, 10, 2000)
+        denom = c * x + d
+        y = (a * x + b) / denom
+        y = np.where(np.abs(denom) < 0.005, np.nan, y)
+        y = np.where(np.abs(y) > 50, np.nan, y)
+
+        # Asymptotes
+        va_x = -d / c  # vertical asymptote
+        ha_y = a / c   # horizontal asymptote
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines",
+                                  name=f"({a}x+{b})/({c}x+{d})",
+                                  line=dict(color="#ec4899", width=2)))
+        # Vertical asymptote
+        fig.add_vline(x=va_x, line=dict(color="#ef4444", width=1, dash="dash"),
+                      annotation_text=f"x = {va_x:.2f}", annotation_position="top")
+        # Horizontal asymptote
+        fig.add_hline(y=ha_y, line=dict(color="#ef4444", width=1, dash="dash"),
+                      annotation_text=f"y = {ha_y:.2f}", annotation_position="right")
+        fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+        fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+        fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                          yaxis_range=[-10, 10], hovermode="x")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown(
+            f'<div class="result-box">'
+            f'<strong>Vertical asymptote:</strong> x = {va_x:.4f}<br>'
+            f'<strong>Horizontal asymptote:</strong> y = {ha_y:.4f}<br>'
+            f'<strong>x-intercept:</strong> ({-b/a:.4f}, 0){"" if abs(a) > 0.001 else " (none)"}<br>'
+            f'<strong>y-intercept:</strong> (0, {b/d:.4f}){"" if abs(d) > 0.001 else " (none)"}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+# ── Piecewise Functions ───────────────────────────────────
+elif topic == "Piecewise Functions":
+    st.markdown("## Piecewise Functions")
+    st.markdown("Define up to 3 function pieces, each over an interval.")
+
+    pieces = st.slider("Number of pieces", 1, 3, 2, key="pw_n")
+
+    # Collect segments
+    seg_colors = ["#6366f1", "#10b981", "#f59e0b"]
+    seg_names = ["f₁(x)", "f₂(x)", "f₃(x)"]
+    fig = go.Figure()
+    x_full = np.linspace(-10, 10, 2000)
+
+    for i in range(pieces):
+        st.markdown(f"**Piece {i+1}**")
+        col1, col2, col3 = st.columns([2, 2, 3])
+        with col1:
+            fn_type = st.selectbox(
+                "Function",
+                ["constant", "linear", "quadratic", "sin", "cos", "sqrt", "abs"],
+                key=f"pw_fn_{i}",
+            )
+        with col2:
+            if fn_type == "constant":
+                p1 = st.number_input("c", 0.0, key=f"pw_p1_{i}")
+                def fn(x, p1=p1): return np.full_like(x, p1, dtype=float)
+                label = f"{p1:.1f}"
+            elif fn_type == "linear":
+                p1 = st.number_input("m", 1.0, key=f"pw_p1_{i}")
+                p2 = st.number_input("c", 0.0, key=f"pw_p2_{i}")
+                def fn(x, p1=p1, p2=p2): return p1 * x + p2
+                label = f"{p1}x + {p2}"
+            elif fn_type == "quadratic":
+                p1 = st.number_input("a", 1.0, key=f"pw_p1_{i}")
+                p2 = st.number_input("b", 0.0, key=f"pw_p2_{i}")
+                p3 = st.number_input("c", 0.0, key=f"pw_p3_{i}")
+                def fn(x, p1=p1, p2=p2, p3=p3): return p1 * x**2 + p2 * x + p3
+                label = f"{p1}x²+{p2}x+{p3}"
+            elif fn_type == "sin":
+                p1 = st.number_input("amp", 1.0, key=f"pw_p1_{i}")
+                p2 = st.number_input("freq", 1.0, key=f"pw_p2_{i}")
+                def fn(x, p1=p1, p2=p2): return p1 * np.sin(p2 * x)
+                label = f"{p1}sin({p2}x)"
+            elif fn_type == "cos":
+                p1 = st.number_input("amp", 1.0, key=f"pw_p1_{i}")
+                p2 = st.number_input("freq", 1.0, key=f"pw_p2_{i}")
+                def fn(x, p1=p1, p2=p2): return p1 * np.cos(p2 * x)
+                label = f"{p1}cos({p2}x)"
+            elif fn_type == "sqrt":
+                p1 = st.number_input("amp", 1.0, key=f"pw_p1_{i}")
+                p2 = st.number_input("shift x", 0.0, key=f"pw_p2_{i}")
+                def fn(x, p1=p1, p2=p2): return p1 * np.sqrt(np.where(x - p2 >= 0, x - p2, 0))
+                label = f"{p1}√(x-{p2})"
+            elif fn_type == "abs":
+                p1 = st.number_input("amp", 1.0, key=f"fw_p1_{i}")
+                p2 = st.number_input("shift", 0.0, key=f"fw_p2_{i}")
+                def fn(x, p1=p1, p2=p2): return p1 * np.abs(x - p2)
+                label = f"{p1}|x-{p2}|"
+
+        with col3:
+            lo = st.number_input("From x =", -10.0, 10.0, -5.0 + i * 5, key=f"pw_lo_{i}")
+            hi = st.number_input("To x =", -10.0, 10.0, 0.0 + i * 5, key=f"pw_hi_{i}")
+
+        mask = (x_full >= lo) & (x_full <= hi)
+        y_piece = fn(x_full)
+        y_piece = np.where(mask, y_piece, np.nan)
+        # Clamp extremes
+        y_piece = np.where(np.abs(y_piece) > 50, np.nan, y_piece)
+
+        fig.add_trace(go.Scatter(
+            x=x_full, y=y_piece, mode="lines",
+            name=f"{seg_names[i]}: {label}  [{lo}, {hi}]",
+            line=dict(color=seg_colors[i], width=3),
+        ))
+        # Boundary markers (filled dot at left, open at right)
+        y_lo = fn(np.array([lo]))[0]
+        y_hi = fn(np.array([hi]))[0]
+        fig.add_trace(go.Scatter(x=[lo], y=[y_lo], mode="markers",
+                                  marker=dict(size=8, color=seg_colors[i]),
+                                  showlegend=False))
+        fig.add_trace(go.Scatter(x=[hi], y=[y_hi], mode="markers",
+                                  marker=dict(size=8, color=seg_colors[i],
+                                              symbol="circle-open"),
+                                  showlegend=False))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=450, margin=dict(l=20, r=20, t=20, b=20),
+                      yaxis_range=[-8, 8], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
 
 # ── Quadratic ─────────────────────────────────────────────
 if topic == "Quadratic Equation":
