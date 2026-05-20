@@ -69,7 +69,7 @@ if topic == "Exponential Functions":
     fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
     fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
     fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
-                      yaxis_range=[-10, 10], hovermode="x")
+                      yaxis_range=[-16, 16], hovermode="x")
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown(
