@@ -81,7 +81,7 @@ if topic == "Quadratic Equation":
 # ── Trigonometry ──────────────────────────────────────────
 elif topic == "Trigonometry Explorer":
     st.markdown("## Interactive Trig Functions")
-    func = st.selectbox("Function", ["sin(x)", "cos(x)", "tan(x)", "sin(x) & cos(x)"])
+    func = st.selectbox("Function", ["sin(x)", "cos(x)", "tan(x)", "sec(x)", "cosec(x)", "cot(x)", "sin(x) & cos(x)", "sec(x) & cosec(x)"])
     amp = st.slider("Amplitude", 0.1, 5.0, 1.0, 0.1)
     freq = st.slider("Frequency", 0.1, 5.0, 1.0, 0.1)
     phase = st.slider("Phase shift", 0.0, 6.28, 0.0, 0.01)
@@ -103,6 +103,39 @@ elif topic == "Trigonometry Explorer":
         y = np.where(np.abs(y) > 10, np.nan, y)
         fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="tan(x)",
                                   line=dict(color="#f59e0b", width=2)))
+    elif func == "sec(x)":
+        cos_val = np.cos(freq * x + phase)
+        y = amp / cos_val
+        y = np.where(np.abs(cos_val) < 0.005, np.nan, y)
+        y = np.where(np.abs(y) > 10, np.nan, y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="sec(x)",
+                                  line=dict(color="#a855f7", width=2)))
+    elif func == "cosec(x)":
+        sin_val = np.sin(freq * x + phase)
+        y = amp / sin_val
+        y = np.where(np.abs(sin_val) < 0.005, np.nan, y)
+        y = np.where(np.abs(y) > 10, np.nan, y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="cosec(x)",
+                                  line=dict(color="#ec4899", width=2)))
+    elif func == "cot(x)":
+        sin_val = np.sin(freq * x + phase)
+        cos_val = np.cos(freq * x + phase)
+        y = amp * cos_val / sin_val
+        y = np.where(np.abs(sin_val) < 0.005, np.nan, y)
+        y = np.where(np.abs(y) > 10, np.nan, y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="cot(x)",
+                                  line=dict(color="#06b6d4", width=2)))
+    elif func == "sec(x) & cosec(x)":
+        cos_val = np.cos(freq * x + phase)
+        sin_val = np.sin(freq * x + phase)
+        y_sec = amp / cos_val
+        y_csc = amp / sin_val
+        y_sec = np.where((np.abs(cos_val) < 0.005) | (np.abs(y_sec) > 10), np.nan, y_sec)
+        y_csc = np.where((np.abs(sin_val) < 0.005) | (np.abs(y_csc) > 10), np.nan, y_csc)
+        fig.add_trace(go.Scatter(x=x, y=y_sec, mode="lines", name="sec(x)",
+                                  line=dict(color="#a855f7", width=2)))
+        fig.add_trace(go.Scatter(x=x, y=y_csc, mode="lines", name="cosec(x)",
+                                  line=dict(color="#ec4899", width=2)))
     else:
         add_fn("sin", np.sin, "#6366f1")
         add_fn("cos", np.cos, "#10b981")
