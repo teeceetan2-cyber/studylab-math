@@ -29,9 +29,12 @@ category = st.sidebar.selectbox("Category", [
 ])
 
 topic_map = {
-    "🔢 Algebra": ["Quadratic Equation", "Exponential Functions",
-                    "Logarithmic Functions", "Square Root Functions",
-                    "Rational Functions", "Piecewise Functions"],
+    "🔢 Algebra": ["Linear Functions", "Quadratic Equation",
+                    "Exponential Functions", "Logarithmic Functions",
+                    "Square Root Functions", "Rational Functions",
+                    "Piecewise Functions",
+                    "Intersection: Linear & Linear",
+                    "Intersection: Linear & Quadratic"],
     "📐 Trigonometry": ["Trigonometry Explorer", "Unit Circle"],
     "📈 Calculus": ["Derivative Visualizer", "Integral Area"],
     "🧭 Vectors": ["2D Vector Explorer", "Vector Addition", "Dot Product",
@@ -43,6 +46,189 @@ topic_map = {
 topic = st.sidebar.radio("Topic", topic_map[category])
 
 # ── Exponential Functions ────────────────────────────────
+# ── Linear Functions ─────────────────────────────────────
+if topic == "Linear Functions":
+    st.markdown("## Linear Functions")
+    st.latex(r"f(x) = mx + c")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="lin_m")
+    with col2:
+        c = st.slider("y-intercept c", -10.0, 10.0, 0.0, 0.1, key="lin_c")
+
+    x = np.linspace(-10, 10, 400)
+    y = m * x + c
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines",
+                              name=f"y = {m}x + {c}",
+                              line=dict(color="#6366f1", width=2)))
+    if abs(m) < 5 and abs(m) > 0.01:
+        run = 2.0
+        x0, y0 = 1.0, m * 1.0 + c
+        x1 = x0 + run
+        y1 = m * x1 + c
+        fig.add_trace(go.Scatter(x=[x0, x1], y=[y0, y0], mode="lines",
+                                  line=dict(color="#ef4444", width=1, dash="dot"),
+                                  showlegend=False))
+        fig.add_trace(go.Scatter(x=[x1, x1], y=[y0, y1], mode="lines",
+                                  line=dict(color="#10b981", width=1, dash="dot"),
+                                  showlegend=False))
+        fig.add_annotation(x=(x0+x1)/2, y=y0-0.5, text=f"run={run:.0f}",
+                           showarrow=False, font=dict(color="#ef4444", size=11))
+        fig.add_annotation(x=x1+0.3, y=(y0+y1)/2, text=f"rise={m*run:.1f}",
+                           showarrow=False, font=dict(color="#10b981", size=11))
+
+    y_int = c
+    x_int = -c / m if abs(m) > 0.001 else None
+
+    fig.add_trace(go.Scatter(x=[0], y=[y_int], mode="markers",
+                              marker=dict(size=8, color="#f59e0b"),
+                              name=f"y-int (0, {y_int:.2f})"))
+    if x_int is not None:
+        fig.add_trace(go.Scatter(x=[x_int], y=[0], mode="markers",
+                                  marker=dict(size=8, color="#f59e0b", symbol="x"),
+                                  name=f"x-int ({x_int:.2f}, 0)"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                      xaxis=dict(range=[-10, 10], scaleanchor="y"),
+                      yaxis=dict(range=[-10, 10]), hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown(
+        f'<div class="result-box">'
+        f'<strong>Slope:</strong> m = {m:.2f}  '
+        f'({"↗ increasing" if m > 0 else "↘ decreasing" if m < 0 else "→ constant"})<br>'
+        f'<strong>y-intercept:</strong> (0, {y_int:.2f})<br>'
+        f'{"" if x_int is None else f"<strong>x-intercept:</strong> ({x_int:.4f}, 0)"}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+# ── Intersection: Linear & Linear ─────────────────────────
+elif topic == "Intersection: Linear & Linear":
+    st.markdown("## Intersection: Two Lines")
+    st.markdown("Find where y1 = m1x + c1 and y2 = m2x + c2 meet.")
+    st.latex(r"m_1x + c_1 = m_2x + c_2 \quad\rightarrow\quad x = \frac{c_2 - c_1}{m_1 - m_2}")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Line 1**")
+        m1 = st.slider("m1", -5.0, 5.0, 1.0, 0.1, key="ll_m1")
+        c1 = st.slider("c1", -10.0, 10.0, -2.0, 0.1, key="ll_c1")
+    with col2:
+        st.markdown("**Line 2**")
+        m2 = st.slider("m2", -5.0, 5.0, -1.0, 0.1, key="ll_m2")
+        c2 = st.slider("c2", -10.0, 10.0, 4.0, 0.1, key="ll_c2")
+
+    x = np.linspace(-10, 10, 400)
+    y1 = m1 * x + c1
+    y2 = m2 * x + c2
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y1, mode="lines",
+                              name=f"y1 = {m1}x + {c1}",
+                              line=dict(color="#6366f1", width=2)))
+    fig.add_trace(go.Scatter(x=x, y=y2, mode="lines",
+                              name=f"y2 = {m2}x + {c2}",
+                              line=dict(color="#10b981", width=2)))
+
+    if abs(m1 - m2) < 0.001:
+        if abs(c1 - c2) < 0.001:
+            st.info("Infinite intersections (coincident lines).")
+        else:
+            st.warning("Parallel lines - no intersection.")
+    else:
+        ix = (c2 - c1) / (m1 - m2)
+        iy = m1 * ix + c1
+        st.success(f"**Intersection:** ({ix:.4f}, {iy:.4f})")
+        fig.add_trace(go.Scatter(x=[ix], y=[iy], mode="markers",
+                                  marker=dict(size=12, color="#ef4444", symbol="x"),
+                                  name=f"({ix:.3f}, {iy:.3f})"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                      xaxis=dict(range=[-10, 10], scaleanchor="y"),
+                      yaxis=dict(range=[-10, 10]), hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Intersection: Linear & Quadratic ──────────────────────
+elif topic == "Intersection: Linear & Quadratic":
+    st.markdown("## Intersection: Line & Parabola")
+    st.markdown("Find where line y = mx + k meets parabola y = ax^2 + bx + c.")
+    st.latex(r"ax^2 + (b-m)x + (c-k) = 0")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Line: y = mx + k**")
+        m = st.slider("m", -5.0, 5.0, 1.0, 0.1, key="lq_m")
+        k = st.slider("k", -10.0, 10.0, 0.0, 0.1, key="lq_k")
+    with col2:
+        st.markdown("**Parabola: y = ax^2 + bx + c**")
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="lq_a")
+        bq = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="lq_b")
+        cq = st.slider("c", -10.0, 10.0, -4.0, 0.1, key="lq_c")
+
+    A = a
+    B = bq - m
+    C = cq - k
+
+    x = np.linspace(-10, 10, 600)
+    y_line = m * x + k
+    y_quad = a * x**2 + bq * x + cq
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y_quad, mode="lines",
+                              name=f"y = {a}x^2 + {bq}x + {cq}",
+                              line=dict(color="#6366f1", width=2)))
+    fig.add_trace(go.Scatter(x=x, y=y_line, mode="lines",
+                              name=f"y = {m}x + {k}",
+                              line=dict(color="#f59e0b", width=2)))
+
+    if abs(A) < 0.001:
+        if abs(B) < 0.001:
+            msg = "Coincident - infinite intersections." if abs(C) < 0.001 else "No intersection."
+            st.info(msg)
+        else:
+            ix = -C / B
+            iy = m * ix + k
+            st.success(f"**Intersection:** ({ix:.4f}, {iy:.4f})")
+            fig.add_trace(go.Scatter(x=[ix], y=[iy], mode="markers",
+                                      marker=dict(size=12, color="#ef4444"),
+                                      name=f"({ix:.3f}, {iy:.3f})"))
+    else:
+        D = B**2 - 4*A*C
+        if D < 0:
+            st.warning(f"**No intersection.** Delta = {D:.4f} < 0")
+        elif D == 0:
+            ix = -B / (2*A)
+            iy = m * ix + k
+            st.info(f"**Tangent:** ({ix:.4f}, {iy:.4f})")
+            fig.add_trace(go.Scatter(x=[ix], y=[iy], mode="markers",
+                                      marker=dict(size=12, color="#ef4444"),
+                                      name=f"({ix:.3f}, {iy:.3f})"))
+        else:
+            sqrt_D = math.sqrt(D)
+            ix1 = (-B + sqrt_D) / (2*A)
+            ix2 = (-B - sqrt_D) / (2*A)
+            iy1 = m * ix1 + k
+            iy2 = m * ix2 + k
+            st.success("**Two intersections:**")
+            st.markdown(f"P1 = ({ix1:.4f}, {iy1:.4f})")
+            st.markdown(f"P2 = ({ix2:.4f}, {iy2:.4f})")
+            fig.add_trace(go.Scatter(x=[ix1, ix2], y=[iy1, iy2], mode="markers",
+                                      marker=dict(size=10, color="#ef4444"),
+                                      name="Intersections"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                      yaxis_range=[-12, 12], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
 if topic == "Exponential Functions":
     st.markdown("## Exponential Functions")
     st.latex(r"f(x) = a \cdot b^{cx + d} + k")
