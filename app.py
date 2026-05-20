@@ -26,6 +26,7 @@ category = st.sidebar.selectbox("Category", [
     "📈 Calculus",
     "🧭 Vectors",
     "🧊 Geometry",
+    "🔄 Transformations",
 ])
 
 topic_map = {
@@ -41,6 +42,10 @@ topic_map = {
                     "3D Vector Explorer", "Cross Product (3D)",
                     "Shortest Distance", "Plane Vectors"],
     "🧊 Geometry": ["3D Geometry"],
+    "🔄 Transformations": ["Reflection", "Translation", "Rotation",
+                           "Enlargement (Dilation)", "Modulus |f(x)|",
+                           "Inverse f⁻¹(x)", "Reciprocal 1/f(x)",
+                           "Shear", "Stretch"],
 }
 
 topic = st.sidebar.radio("Topic", topic_map[category])
@@ -1946,6 +1951,410 @@ elif topic == "3D Geometry":
     st.plotly_chart(fig, use_container_width=True)
     st.caption("🖱️ Drag to rotate · Scroll to zoom · Dashed lines show dimensions")
 
+# ================================================================
+#                     🔄 TRANSFORMATIONS
+# ================================================================
+elif topic == "Reflection":
+    st.markdown("## Reflection")
+    st.latex(r"(x, y) \to (x, -y) \quad\text{(x-axis)}\qquad (x, y) \to (-x, y) \quad\text{(y-axis)}")
+    st.latex(r"(x, y) \to (y, x) \quad\text{(y=x)}\qquad (x, y) \to (-y, -x) \quad\text{(y=-x)}")
+
+    target = st.radio("Target", ["Point", "Linear Function", "Quadratic Function"], horizontal=True, key="ref_target")
+    axis = st.selectbox("Axis", ["x-axis (y → -y)", "y-axis (x → -x)", "y = x", "y = -x"], key="ref_axis")
+
+    ax_map = {"x-axis (y → -y)": (1, -1), "y-axis (x → -x)": (-1, 1), "y = x": None, "y = -x": None}
+    fig = go.Figure()
+    colors = {"original": "#6366f1", "transformed": "#ef4444"}
+
+    if target == "Point":
+        px = st.slider("Point x", -8.0, 8.0, 3.0, 0.1, key="ref_px")
+        py = st.slider("Point y", -8.0, 8.0, 2.0, 0.1, key="ref_py")
+        if axis == "x-axis (y → -y)": rx, ry = px, -py
+        elif axis == "y-axis (x → -x)": rx, ry = -px, py
+        elif axis == "y = x": rx, ry = py, px
+        else: rx, ry = -py, -px
+        fig.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(size=12, color=colors["original"]), name=f"P({px:.1f},{py:.1f})"))
+        fig.add_trace(go.Scatter(x=[rx], y=[ry], mode="markers", marker=dict(size=12, color=colors["transformed"], symbol="x"), name=f"P'({rx:.1f},{ry:.1f})"))
+        fig.add_trace(go.Scatter(x=[px, rx], y=[py, ry], mode="lines", line=dict(color="#f59e0b", width=1, dash="dot"), showlegend=False))
+
+    x = np.linspace(-10, 10, 400)
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="ref_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 1.0, 0.1, key="ref_c")
+        y_orig = m * x + c
+        if axis == "x-axis (y → -y)": y_trans = -m * x - c
+        elif axis == "y-axis (x → -x)": y_trans = -m * x + c
+        elif axis == "y = x": y_trans = (x - c) / m if abs(m) > 0.01 else np.full_like(x, np.nan)
+        else: y_trans = (-x - c) / m if abs(m) > 0.01 else np.full_like(x, np.nan)
+        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color=colors["original"], width=2), name=f"y={{{m}}}x+{{{c}}}"))
+        fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color=colors["transformed"], width=2, dash="dash"), name="Reflected"))
+
+    if target == "Quadratic Function":
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="ref_a")
+        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="ref_b")
+        c = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="ref_c")
+        y_orig = a * x**2 + b * x + c
+        if axis == "x-axis (y → -y)": y_trans = -a * x**2 - b * x - c
+        elif axis == "y-axis (x → -x)": y_trans = a * x**2 - b * x + c
+        elif axis == "y = x":
+            # Reflection about y=x: swap x and y → need to solve x = ay²+by+c for y
+            y_trans = np.full_like(x, np.nan)
+        else:
+            y_trans = np.full_like(x, np.nan)
+        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color=colors["original"], width=2), name="Original"))
+        fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color=colors["transformed"], width=2, dash="dash"), name="Reflected"))
+
+    if axis in ("y = x", "y = -x"):
+        fig.add_trace(go.Scatter(x=[-10, 10], y=[-10 if axis=="y = x" else 10, 10 if axis=="y = x" else -10], mode="lines", line=dict(color="#555", width=1, dash="dot"), name=axis))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), xaxis=dict(range=[-10,10], scaleanchor="y"), yaxis=dict(range=[-10,10]), hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Translation ──────────────────────────────────────────
+elif topic == "Translation":
+    st.markdown("## Translation")
+    st.latex(r"(x, y) \to (x + a, y + b)")
+
+    target = st.radio("Target", ["Point", "Linear Function", "Quadratic Function"], horizontal=True, key="tr_target")
+    tx = st.slider("Translate x by", -5.0, 5.0, 2.0, 0.1, key="tr_tx")
+    ty = st.slider("Translate y by", -5.0, 5.0, 1.0, 0.1, key="tr_ty")
+
+    fig = go.Figure()
+    x = np.linspace(-10, 10, 400)
+
+    if target == "Point":
+        px = st.slider("Point x", -8.0, 8.0, 1.0, 0.1, key="tr_px")
+        py = st.slider("Point y", -8.0, 8.0, 2.0, 0.1, key="tr_py")
+        rx, ry = px + tx, py + ty
+        fig.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(size=12, color="#6366f1"), name=f"P({px:.1f},{py:.1f})"))
+        fig.add_trace(go.Scatter(x=[rx], y=[ry], mode="markers", marker=dict(size=12, color="#ef4444", symbol="x"), name=f"P'({rx:.1f},{ry:.1f})"))
+        fig.add_trace(go.Scatter(x=[px, rx], y=[py, ry], mode="lines", line=dict(color="#f59e0b", width=2), name=f"({tx},{ty})"))
+
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="tr_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 1.0, 0.1, key="tr_c")
+        y_orig = m * x + c
+        y_trans = m * (x - tx) + c + ty
+        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color="#6366f1", width=2), name=f"y={{{m}}}x+{{{c}}}"))
+        fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="Translated"))
+
+    if target == "Quadratic Function":
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="tr_a")
+        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="tr_b")
+        c = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="tr_c")
+        y_orig = a * x**2 + b * x + c
+        y_trans = a * (x - tx)**2 + b * (x - tx) + c + ty
+        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color="#6366f1", width=2), name="Original"))
+        fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="Translated"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), yaxis_range=[-10, 10], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Rotation ─────────────────────────────────────────────
+elif topic == "Rotation":
+    st.markdown("## Rotation")
+    st.latex(r"(x, y) \to (x\cos\theta - y\sin\theta,\; x\sin\theta + y\cos\theta)")
+
+    target = st.radio("Target", ["Point", "Linear Function", "Quadratic Function"], horizontal=True, key="rot_target")
+    angle = st.slider("Angle (degrees)", -180, 180, 45, 1, key="rot_angle")
+    rad = math.radians(angle)
+    cth, sth = math.cos(rad), math.sin(rad)
+
+    fig = go.Figure()
+    x = np.linspace(-10, 10, 400)
+
+    if target == "Point":
+        px = st.slider("Point x", -8.0, 8.0, 3.0, 0.1, key="rot_px")
+        py = st.slider("Point y", -8.0, 8.0, 2.0, 0.1, key="rot_py")
+        rx = px * cth - py * sth
+        ry = px * sth + py * cth
+        fig.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(size=12, color="#6366f1"), name=f"P({px:.1f},{py:.1f})"))
+        fig.add_trace(go.Scatter(x=[rx], y=[ry], mode="markers", marker=dict(size=12, color="#ef4444", symbol="x"), name=f"P'({rx:.1f},{ry:.1f})"))
+        fig.add_trace(go.Scatter(x=[0, px], y=[0, py], mode="lines", line=dict(color="#6366f1", width=1, dash="dot"), showlegend=False))
+        fig.add_trace(go.Scatter(x=[0, rx], y=[0, ry], mode="lines", line=dict(color="#ef4444", width=1, dash="dot"), showlegend=False))
+
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="rot_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 1.0, 0.1, key="rot_c")
+        # Rotate line: transform two points and draw line between them
+        pts_x = np.array([-10, 10])
+        pts_y = m * pts_x + c
+        rx_pts = pts_x * cth - pts_y * sth
+        ry_pts = pts_x * sth + pts_y * cth
+        fig.add_trace(go.Scatter(x=pts_x, y=pts_y, mode="lines", line=dict(color="#6366f1", width=2), name=f"y={{{m}}}x+{{{c}}}"))
+        fig.add_trace(go.Scatter(x=rx_pts, y=ry_pts, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name=f"Rotated {angle}°"))
+
+    if target == "Quadratic Function":
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="rot_a")
+        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="rot_b")
+        c = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="rot_c")
+        pts_x = x.copy()
+        pts_y = a * pts_x**2 + b * pts_x + c
+        rx_pts = pts_x * cth - pts_y * sth
+        ry_pts = pts_x * sth + pts_y * cth
+        fig.add_trace(go.Scatter(x=pts_x, y=pts_y, mode="lines", line=dict(color="#6366f1", width=2), name="Original"))
+        fig.add_trace(go.Scatter(x=rx_pts, y=ry_pts, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name=f"Rotated {angle}°"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), xaxis=dict(range=[-10,10], scaleanchor="y"), yaxis=dict(range=[-10,10]), hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Enlargement (Dilation) ───────────────────────────────
+elif topic == "Enlargement (Dilation)":
+    st.markdown("## Enlargement / Dilation")
+    st.latex(r"(x, y) \to (kx, ky) \quad\text{or}\quad f(x) \to k\cdot f(x)")
+
+    target = st.radio("Target", ["Point", "Linear Function", "Quadratic Function"], horizontal=True, key="enl_target")
+    scale = st.slider("Scale factor k", -3.0, 3.0, 2.0, 0.1, key="enl_scale")
+    origin = st.checkbox("From origin (0,0)", value=True, key="enl_origin")
+
+    fig = go.Figure()
+    x = np.linspace(-10, 10, 400)
+    colors = {"original": "#6366f1", "transformed": "#ef4444"}
+
+    if target == "Point":
+        px = st.slider("Point x", -8.0, 8.0, 2.0, 0.1, key="enl_px")
+        py = st.slider("Point y", -8.0, 8.0, 3.0, 0.1, key="enl_py")
+        rx, ry = px * scale, py * scale
+        fig.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(size=12, color=colors["original"]), name=f"P({px:.1f},{py:.1f})"))
+        fig.add_trace(go.Scatter(x=[rx], y=[ry], mode="markers", marker=dict(size=12, color=colors["transformed"], symbol="x"), name=f"P'({rx:.1f},{ry:.1f})"))
+        fig.add_trace(go.Scatter(x=[0, rx], y=[0, ry], mode="lines", line=dict(color=colors["transformed"], width=1, dash="dot"), showlegend=False))
+
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="enl_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 1.0, 0.1, key="enl_c")
+        y_orig = m * x + c
+        # Scale about origin: multiply y by scale
+        # If scaling about origin, the shape scales from (0,0)
+        y_trans = scale * y_orig
+        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color=colors["original"], width=2), name=f"y={{{m}}}x+{{{c}}}"))
+        fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color=colors["transformed"], width=2, dash="dash"), name=f"Scaled x{scale}"))
+
+    if target == "Quadratic Function":
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="enl_a")
+        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="enl_b")
+        c = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="enl_c")
+        y_orig = a * x**2 + b * x + c
+        y_trans = scale * y_orig
+        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color=colors["original"], width=2), name="Original"))
+        fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color=colors["transformed"], width=2, dash="dash"), name=f"Scaled x{scale}"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), yaxis_range=[-12, 12], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Modulus |f(x)| ───────────────────────────────────────
+elif topic == "Modulus |f(x)|":
+    st.markdown("## Modulus |f(x)|")
+    st.latex(r"|f(x)| = \begin{cases} f(x) & f(x) \ge 0 \\ -f(x) & f(x) < 0 \end{cases}")
+
+    target = st.radio("Target", ["Linear Function", "Quadratic Function"], horizontal=True, key="mod_target")
+    fig = go.Figure()
+    x = np.linspace(-10, 10, 600)
+
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="mod_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 0.0, 0.1, key="mod_c")
+        y = m * x + c
+        y_mod = np.abs(y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", line=dict(color="#6366f1", width=2), name=f"f(x)={{{m}}}x+{{{c}}}"))
+        fig.add_trace(go.Scatter(x=x, y=y_mod, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="|f(x)|"))
+
+    if target == "Quadratic Function":
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="mod_a")
+        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="mod_b")
+        c = st.slider("c", -10.0, 10.0, -4.0, 0.1, key="mod_c")
+        y = a * x**2 + b * x + c
+        y_mod = np.abs(y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", line=dict(color="#6366f1", width=2), name="f(x)"))
+        fig.add_trace(go.Scatter(x=x, y=y_mod, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="|f(x)|"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), yaxis_range=[-10, 12], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Inverse f⁻¹(x) ───────────────────────────────────────
+elif topic == "Inverse f⁻¹(x)":
+    st.markdown("## Inverse Function")
+    st.latex(r"f^{-1}(f(x)) = x \qquad f(f^{-1}(x)) = x")
+    st.latex(r"\text{Raw: swap } x \leftrightarrow y \text{ and solve for } y")
+
+    target = st.radio("Target", ["Linear Function", "Quadratic Function"], horizontal=True, key="inv_target")
+    fig = go.Figure()
+    x = np.linspace(-10, 10, 400)
+
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 2.0, 0.1, key="inv_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 0.0, 0.1, key="inv_c")
+        y = m * x + c
+        # inverse: x = my + c => y = (x - c) / m
+        if abs(m) > 0.001:
+            y_inv = (x - c) / m
+            fig.add_trace(go.Scatter(x=x, y=y, mode="lines", line=dict(color="#6366f1", width=2), name=f"f(x)={{{m}}}x+{{{c}}}"))
+            fig.add_trace(go.Scatter(x=x, y=y_inv, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name=f"f⁻¹(x)=(x-{{{c}}})/{{{m}}}"))
+        else:
+            st.warning("Slope m cannot be 0 for inverse of a linear function (horizontal line).")
+
+    if target == "Quadratic Function":
+        a = st.slider("a (positive for √)", 0.1, 5.0, 1.0, 0.1, key="inv_a")
+        c = st.slider("c (constant)", -10.0, 10.0, 0.0, 0.1, key="inv_c")
+        y = a * x**2 + c
+        # inverse: x = ay² + c => y = ±√((x-c)/a) for x ≥ c
+        x_fwd = np.linspace(-5, 5, 400)
+        y_fwd = a * x_fwd**2 + c
+        # Only show positive branch
+        x_inv = np.linspace(c, c + 10, 400)
+        y_inv_pos = np.sqrt((x_inv - c) / a)
+        y_inv_neg = -np.sqrt((x_inv - c) / a)
+        fig.add_trace(go.Scatter(x=x_fwd, y=y_fwd, mode="lines", line=dict(color="#6366f1", width=2), name="f(x)=ax²+c"))
+        fig.add_trace(go.Scatter(x=x_inv, y=y_inv_pos, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="f⁻¹(x) (positive)"))
+        fig.add_trace(go.Scatter(x=x_inv, y=y_inv_neg, mode="lines", line=dict(color="#ef4444", width=1, dash="dot"), name="f⁻¹(x) (negative)"))
+
+    fig.add_trace(go.Scatter(x=[-10, 10], y=[-10, 10], mode="lines", line=dict(color="#555", width=1, dash="dot"), name="y=x"))
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), yaxis_range=[-10, 10], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Reciprocal 1/f(x) ────────────────────────────────────
+elif topic == "Reciprocal 1/f(x)":
+    st.markdown("## Reciprocal 1/f(x)")
+    st.latex(r"\frac{1}{f(x)} \quad\text{Vertical asymptotes where } f(x) = 0")
+
+    target = st.radio("Target", ["Linear Function", "Quadratic Function"], horizontal=True, key="rec_target")
+    fig = go.Figure()
+    x = np.linspace(-10, 10, 2000)
+
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="rec_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 2.0, 0.1, key="rec_c")
+        y = m * x + c
+        y_rec = 1.0 / y
+        y_rec = np.where(np.abs(y) < 0.005, np.nan, y_rec)
+        y_rec = np.where(np.abs(y_rec) > 20, np.nan, y_rec)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", line=dict(color="#6366f1", width=2), name=f"f(x)={{{m}}}x+{{{c}}}"))
+        fig.add_trace(go.Scatter(x=x, y=y_rec, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="1/f(x)"))
+
+    if target == "Quadratic Function":
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="rec_a")
+        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="rec_b")
+        c = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="rec_c")
+        y = a * x**2 + b * x + c
+        y_rec = 1.0 / y
+        y_rec = np.where(np.abs(y) < 0.005, np.nan, y_rec)
+        y_rec = np.where(np.abs(y_rec) > 20, np.nan, y_rec)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", line=dict(color="#6366f1", width=2), name="f(x)"))
+        fig.add_trace(go.Scatter(x=x, y=y_rec, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="1/f(x)"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), yaxis_range=[-10, 10], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Shear ────────────────────────────────────────────────
+elif topic == "Shear":
+    st.markdown("## Shear Transformation")
+    st.latex(r"\text{Horizontal: } (x, y) \to (x + ky, y) \qquad \text{Vertical: } (x, y) \to (x, y + kx)")
+
+    target = st.radio("Target", ["Point", "Linear Function", "Quadratic Function"], horizontal=True, key="sh_target")
+    direction = st.radio("Direction", ["Horizontal", "Vertical"], horizontal=True, key="sh_dir")
+    k = st.slider("Shear factor k", -3.0, 3.0, 1.0, 0.1, key="sh_k")
+
+    fig = go.Figure()
+    x = np.linspace(-10, 10, 400)
+
+    if target == "Point":
+        px = st.slider("Point x", -8.0, 8.0, 2.0, 0.1, key="sh_px")
+        py = st.slider("Point y", -8.0, 8.0, 3.0, 0.1, key="sh_py")
+        if direction == "Horizontal": rx, ry = px + k * py, py
+        else: rx, ry = px, py + k * px
+        fig.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(size=12, color="#6366f1"), name=f"P({px:.1f},{py:.1f})"))
+        fig.add_trace(go.Scatter(x=[rx], y=[ry], mode="markers", marker=dict(size=12, color="#ef4444", symbol="x"), name=f"P'({rx:.1f},{ry:.1f})"))
+
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="sh_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 1.0, 0.1, key="sh_c")
+        pt_x = np.array([-10, 10])
+        pt_y = m * pt_x + c
+        if direction == "Horizontal": r_pt_x, r_pt_y = pt_x + k * pt_y, pt_y
+        else: r_pt_x, r_pt_y = pt_x, pt_y + k * pt_x
+        fig.add_trace(go.Scatter(x=pt_x, y=pt_y, mode="lines", line=dict(color="#6366f1", width=2), name=f"y={{{m}}}x+{{{c}}}"))
+        fig.add_trace(go.Scatter(x=r_pt_x, y=r_pt_y, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="Sheared"))
+
+    if target == "Quadratic Function":
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="sh_a")
+        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="sh_b")
+        c = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="sh_c")
+        pt_x = x.copy()
+        pt_y = a * pt_x**2 + b * pt_x + c
+        if direction == "Horizontal": r_pt_x, r_pt_y = pt_x + k * pt_y, pt_y
+        else: r_pt_x, r_pt_y = pt_x, pt_y + k * pt_x
+        fig.add_trace(go.Scatter(x=pt_x, y=pt_y, mode="lines", line=dict(color="#6366f1", width=2), name="Original"))
+        fig.add_trace(go.Scatter(x=r_pt_x, y=r_pt_y, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="Sheared"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), yaxis_range=[-10, 10], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ── Stretch ──────────────────────────────────────────────
+elif topic == "Stretch":
+    st.markdown("## Stretch Transformation")
+    st.latex(r"\text{Horizontal: } (x, y) \to (kx, y) \qquad \text{Vertical: } (x, y) \to (x, ky)")
+
+    target = st.radio("Target", ["Point", "Linear Function", "Quadratic Function"], horizontal=True, key="st_target")
+    direction = st.radio("Direction", ["Vertical (y × p)", "Horizontal (x × p)"], horizontal=True, key="st_dir")
+    p = st.slider("Stretch factor p", -3.0, 3.0, 2.0, 0.1, key="st_p")
+
+    fig = go.Figure()
+    x = np.linspace(-10, 10, 400)
+
+    if target == "Point":
+        px = st.slider("Point x", -8.0, 8.0, 2.0, 0.1, key="st_px")
+        py = st.slider("Point y", -8.0, 8.0, 3.0, 0.1, key="st_py")
+        if "Vertical" in direction: rx, ry = px, py * p
+        else: rx, ry = px * p, py
+        fig.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(size=12, color="#6366f1"), name=f"P({px:.1f},{py:.1f})"))
+        fig.add_trace(go.Scatter(x=[rx], y=[ry], mode="markers", marker=dict(size=12, color="#ef4444", symbol="x"), name=f"P'({rx:.1f},{ry:.1f})"))
+
+    if target == "Linear Function":
+        m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="st_m")
+        c = st.slider("Intercept c", -10.0, 10.0, 1.0, 0.1, key="st_c")
+        if "Vertical" in direction:
+            y_orig = m * x + c
+            y_trans = p * y_orig
+            fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color="#6366f1", width=2), name=f"y={{{m}}}x+{{{c}}}"))
+            fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name=f"Stretched y×{p}"))
+        else:
+            y_orig = m * x + c
+            y_trans = m * (x / p) + c if abs(p) > 0.01 else np.full_like(x, np.nan)
+            fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color="#6366f1", width=2), name=f"y={{{m}}}x+{{{c}}}"))
+            fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name=f"Stretched x×{p}"))
+
+    if target == "Quadratic Function":
+        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="st_a")
+        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="st_b")
+        c = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="st_c")
+        if "Vertical" in direction:
+            y_orig = a * x**2 + b * x + c
+            y_trans = p * y_orig
+        else:
+            y_orig = a * x**2 + b * x + c
+            y_trans = a * (x / p)**2 + b * (x / p) + c if abs(p) > 0.01 else np.full_like(x, np.nan)
+        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color="#6366f1", width=2), name="Original"))
+        fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color="#ef4444", width=2, dash="dash"), name="Stretched"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), yaxis_range=[-12, 12], hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
 # ── FOOTER ────────────────────────────────────────────────
 st.markdown("---")
 st.caption("Built with Python · Streamlit · Plotly · NumPy")
