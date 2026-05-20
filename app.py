@@ -890,13 +890,8 @@ elif topic == "Plane Vectors":
                 x=[center_x + n_start * nx, center_x + n_end * nx],
                 y=[center_y + n_start * ny, center_y + n_end * ny],
                 z=[center_z + n_start * nz, center_z + n_end * nz],
-                mode="lines+markers",
+                mode="lines",
                 line=dict(color="#ef4444", width=4),
-                marker=dict(
-                    size=[6, 6],
-                    color=["#ef4444", "#ef4444"],
-                    symbol=["arrow", "arrow"],
-                ),
                 name=f"n = ({a:.2f}, {b:.2f}, {c:.2f})",
             ))
             # Center point (intersection of normal with plane)
