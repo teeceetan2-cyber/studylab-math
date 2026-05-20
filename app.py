@@ -810,88 +810,179 @@ elif topic == "Shortest Distance":
 elif topic == "Plane Vectors":
     st.markdown("## Plane Vectors")
 
-    plane_mode = st.radio("Mode", ["Point + Normal Vector", "Vector Equation r = a + λb + μc"], horizontal=True)
+    plane_mode = st.radio("Mode", [
+        "Cartesian: ax + by + cz + d = 0",
+        "Vector: r = a + λb + μc",
+    ], horizontal=True)
 
-    if plane_mode == "Point + Normal Vector":
-        st.markdown("### Plane: (r − r₀) · n = 0")
-        st.markdown("Define a plane by a point on it and a normal vector.")
+    if plane_mode == "Cartesian: ax + by + cz + d = 0":
+        st.markdown("### Plane: ax + by + cz + d = 0")
+        st.markdown("Set the plane coefficients. The **normal vector** n = (a, b, c) is always ⟂ to the plane.")
 
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("**Point on plane A**")
-            a0 = st.slider("Aₓ", -5.0, 5.0, 0.0, 0.1, key="pl_a0")
-            a1 = st.slider("Aᵧ", -5.0, 5.0, 0.0, 0.1, key="pl_a1")
-            a2 = st.slider("A_z", -5.0, 5.0, 0.0, 0.1, key="pl_a2")
+            st.markdown("**Coefficients**")
+            a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="pv_a")
+            b = st.slider("b", -5.0, 5.0, 2.0, 0.1, key="pv_b")
+            c = st.slider("c", -5.0, 5.0, 1.0, 0.1, key="pv_c")
+            d = st.slider("d", -10.0, 10.0, 0.0, 0.1, key="pv_d")
         with col2:
-            st.markdown("**Normal vector n**")
-            nx = st.slider("nₓ", -5.0, 5.0, 1.0, 0.1, key="pl_nx")
-            ny = st.slider("nᵧ", -5.0, 5.0, 2.0, 0.1, key="pl_ny")
-            nz = st.slider("n_z", -5.0, 5.0, 1.0, 0.1, key="pl_nz")
+            st.markdown("**Normal vector**")
+            st.markdown(f'n = (**{a:.2f}**, **{b:.2f}**, **{c:.2f}**)')
+            st.markdown(f'|n| = {math.sqrt(a**2 + b**2 + c**2):.4f}')
+            st.markdown("\n\n")
+            st.info("The normal is derived from a, b, c — always ⟂ to the plane.")
 
-        mag_n = math.sqrt(nx**2 + ny**2 + nz**2)
-        if mag_n == 0:
-            st.error("Normal vector cannot be zero.")
+        mag_n = math.sqrt(a**2 + b**2 + c**2)
+        if mag_n < 0.001:
+            st.error("Invalid plane: a = b = c = 0")
         else:
-            # Plane eq: nx(x-a0) + ny(y-a1) + nz(z-a2) = 0
-            # => nx x + ny y + nz z + (-nx*a0 - ny*a1 - nz*a2) = 0
-            d_plane = -nx * a0 - ny * a1 - nz * a2
+            # Unit normal
+            nx, ny, nz = a / mag_n, b / mag_n, c / mag_n
 
-            # Create grid
-            xx, zz = np.meshgrid(np.linspace(-5, 5, 20), np.linspace(-5, 5, 20))
-            if abs(nz) > 0.001:
-                yy_plane = (-nx * xx - nz * zz - d_plane) / ny if abs(ny) > 0.001 else np.zeros_like(xx)
+            # Find a point on the plane for surface rendering
+            # Solve for the best axis to parameterize
+            # Find center-ish point on plane
+            t_pt = 0
+            if abs(c) > 0.001:
+                # Use center of grid: solve ax+by+cz+d=0 at (0, 0)
+                center_z = -d / c
+                center_x, center_y = 0, 0
+            elif abs(b) > 0.001:
+                center_y = -d / b
+                center_x, center_z = 0, 0
+            elif abs(a) > 0.001:
+                center_x = -d / a
+                center_y, center_z = 0, 0
             else:
-                if abs(ny) > 0.001:
-                    yy_plane = (-nx * xx - d_plane) / ny
-                else:
-                    yy_plane = zz * 0
+                center_x = center_y = center_z = 0
+
+            # Build surface mesh
+            grid = np.linspace(-6, 6, 25)
+            if abs(c) > 0.001:  # z depends on x, y
+                xx, yy = np.meshgrid(grid, grid)
+                zz = (-a * xx - b * yy - d) / c
+            elif abs(b) > 0.001:  # y depends on x, z
+                xx, zz = np.meshgrid(grid, grid)
+                yy = (-a * xx - c * zz - d) / b
+            elif abs(a) > 0.001:  # x depends on y, z
+                yy, zz = np.meshgrid(grid, grid)
+                xx = (-b * yy - c * zz - d) / a
+            else:
+                xx = yy = zz = np.zeros((25, 25))
+
+            # Normal line extending through plane in both directions (length 4 units)
+            norm_len = 4.0
+            # Start on one side, go through center, end on other side
+            n_start = -norm_len
+            n_end = norm_len
 
             fig = go.Figure()
-            # Plane
+            # Plane surface
             fig.add_trace(go.Surface(
-                x=xx, y=yy_plane, z=zz,
+                x=xx, y=yy, z=zz,
                 colorscale=[[0, "#6366f1"], [1, "#6366f1"]],
-                opacity=0.25, showscale=False, name="Plane",
+                opacity=0.25, showscale=False,
+                name=f"{a}x + {b}y + {c}z + {d} = 0",
             ))
-            # Normal vector from point A
+            # Normal line through plane (both directions)
             fig.add_trace(go.Scatter3d(
-                x=[a0, a0 + nx], y=[a1, a1 + ny], z=[a2, a2 + nz],
+                x=[center_x + n_start * nx, center_x + n_end * nx],
+                y=[center_y + n_start * ny, center_y + n_end * ny],
+                z=[center_z + n_start * nz, center_z + n_end * nz],
                 mode="lines+markers",
                 line=dict(color="#ef4444", width=4),
-                marker=dict(size=[0, 8], color="#ef4444"),
-                name=f"n = ({nx:.1f}, {ny:.1f}, {nz:.1f})",
+                marker=dict(
+                    size=[6, 6],
+                    color=["#ef4444", "#ef4444"],
+                    symbol=["arrow", "arrow"],
+                ),
+                name=f"n = ({a:.2f}, {b:.2f}, {c:.2f})",
             ))
-            # Point A
+            # Center point (intersection of normal with plane)
             fig.add_trace(go.Scatter3d(
-                x=[a0], y=[a1], z=[a2],
-                mode="markers", marker=dict(size=7, color="#f59e0b"),
-                name=f"A({a0:.1f}, {a1:.1f}, {a2:.1f})",
+                x=[center_x], y=[center_y], z=[center_z],
+                mode="markers",
+                marker=dict(size=6, color="#f59e0b"),
+                name="Plane center",
+            ))
+            # Right-angle indicator: small square at the intersection
+            # Small offset along plane tangent
+            tick = 0.3
+            if abs(c) > 0.001:
+                tan1 = np.array([1, 0, -a / c])
+                if abs(b) > 0.001:
+                    tan2 = np.array([0, 1, -b / c])
+                else:
+                    tan2 = np.array([0, 0, 1])
+            elif abs(b) > 0.001:
+                tan1 = np.array([1, -a / b, 0])
+                tan2 = np.array([0, -c / b, 1])
+            else:
+                tan1 = np.array([0, 1, 0])
+                tan2 = np.array([-b / a, 0, 1])
+            # Normalize tangents
+            t1 = tan1 / np.linalg.norm(tan1) * tick
+            t2 = tan2 / np.linalg.norm(tan2) * tick
+            # Draw a small right-angle indicator
+            fig.add_trace(go.Scatter3d(
+                x=[center_x + t1[0], center_x + t1[0] + t2[0], center_x + t2[0]],
+                y=[center_y + t1[1], center_y + t1[1] + t2[1], center_y + t2[1]],
+                z=[center_z + t1[2], center_z + t1[2] + t2[2], center_z + t2[2]],
+                mode="lines",
+                line=dict(color="white", width=2),
+                showlegend=False,
+            ))
+            # Arrow head at both ends of normal
+            fig.add_trace(go.Cone(
+                x=[center_x + (norm_len - 0.4) * nx],
+                y=[center_y + (norm_len - 0.4) * ny],
+                z=[center_z + (norm_len - 0.4) * nz],
+                u=[nx], v=[ny], w=[nz],
+                sizemode="absolute", sizeref=0.3,
+                colorscale=[[0, "#ef4444"], [1, "#ef4444"]],
+                showscale=False,
+                name="n",
+            ))
+            fig.add_trace(go.Cone(
+                x=[center_x + (-norm_len + 0.4) * nx],
+                y=[center_y + (-norm_len + 0.4) * ny],
+                z=[center_z + (-norm_len + 0.4) * nz],
+                u=[-nx], v=[-ny], w=[-nz],
+                sizemode="absolute", sizeref=0.3,
+                colorscale=[[0, "#ef4444"], [1, "#ef4444"]],
+                showscale=False,
+                name="−n",
             ))
 
             fig.update_layout(
                 height=500,
                 scene=dict(
-                    xaxis=dict(range=[-6, 6], title="x"),
-                    yaxis=dict(range=[-6, 6], title="y"),
-                    zaxis=dict(range=[-6, 6], title="z"),
+                    xaxis=dict(range=[-7, 7], title="x"),
+                    yaxis=dict(range=[-7, 7], title="y"),
+                    zaxis=dict(range=[-7, 7], title="z"),
                     bgcolor="rgba(0,0,0,0)",
                     camera=dict(eye=dict(x=1.8, y=1.8, z=1.8)),
                 ),
                 margin=dict(l=10, r=10, t=10, b=10),
             )
             st.plotly_chart(fig, use_container_width=True)
+            st.caption("🖱️ Drag to rotate · Red line = normal n ⟂ plane · White ∟ = right-angle marker")
 
             st.markdown(
                 f'<div class="result-box">'
-                f'<strong>Plane equation:</strong> {nx:.2f}(x − {a0:.1f}) + {ny:.2f}(y − {a1:.1f}) + {nz:.2f}(z − {a2:.1f}) = 0<br>'
-                f'<strong>Cartesian:</strong> {nx:.2f}x + {ny:.2f}y + {nz:.2f}z + {d_plane:.2f} = 0'
+                f'<strong>Plane:</strong> {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0<br>'
+                f'<strong>Normal:</strong> n = ({a:.2f}, {b:.2f}, {c:.2f}) &nbsp;|&nbsp; '
+                f'<strong>Unit normal:</strong> n̂ = ({nx:.4f}, {ny:.4f}, {nz:.4f})<br>'
+                f'<strong>Verify:</strong> n · (x − x₀, y − y₀, z − z₀) = 0 for any (x,y,z) on the plane'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
     else:
         st.markdown("### Vector Equation: r = a + λb + μc")
-        st.markdown("Define a plane by a point **a** and two direction vectors **b** and **c**.")
+        st.markdown("Define a plane by a point **a** and two direction vectors **b** and **c**. "
+                    "The **normal** n = b × c is always ⟂ to both b and c.")
 
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -910,22 +1001,89 @@ elif topic == "Plane Vectors":
             c1 = st.slider("cᵧ", -5.0, 5.0, 2.0, 0.1, key="va_c1")
             c2 = st.slider("c_z", -5.0, 5.0, 0.0, 0.1, key="va_c2")
 
-        # Check b × c ≠ 0
+        # Normal = b × c
         n_cx = b1 * c2 - b2 * c1
         n_cy = b2 * c0 - b0 * c2
         n_cz = b0 * c1 - b1 * c0
         mag_n = math.sqrt(n_cx**2 + n_cy**2 + n_cz**2)
+        nn_x, nn_y, nn_z = n_cx / mag_n, n_cy / mag_n, n_cz / mag_n
 
         if mag_n < 0.001:
-            st.error("b and c are parallel: they don't define a plane (b×c = 0).")
+            st.error("b and c are parallel (b×c = 0). They don't form a plane.")
         else:
-            # Generate points on the plane
-            lam_vals = np.linspace(-2, 2, 15)
-            mu_vals = np.linspace(-2, 2, 15)
-            points_x, points_y, points_z = [], [], []
-            for lam in lam_vals:
-                for mu in mu_vals:
-                    points_x.append(a0 + lam * b0 + mu * c0)
+            # Generate surface
+            ll, mm = np.meshgrid(np.linspace(-2.5, 2.5, 20), np.linspace(-2.5, 2.5, 20))
+            surf_x = a0 + ll * b0 + mm * c0
+            surf_y = a1 + ll * b1 + mm * c1
+            surf_z = a2 + ll * b2 + mm * c2
+
+            norm_len = 4.0
+
+            fig = go.Figure()
+            # Plane surface
+            fig.add_trace(go.Surface(
+                x=surf_x, y=surf_y, z=surf_z,
+                colorscale=[[0, "#6366f1"], [1, "#6366f1"]],
+                opacity=0.2, showscale=False, name="Plane",
+            ))
+            # Point a
+            fig.add_trace(go.Scatter3d(
+                x=[a0], y=[a1], z=[a2],
+                mode="markers", marker=dict(size=6, color="#f59e0b"),
+                name=f"a({a0:.1f}, {a1:.1f}, {a2:.1f})",
+            ))
+            # Vector b from a
+            fig.add_trace(go.Scatter3d(
+                x=[a0, a0 + b0], y=[a1, a1 + b1], z=[a2, a2 + b2],
+                mode="lines+markers",
+                line=dict(color="#10b981", width=4),
+                marker=dict(size=[0, 6], color="#10b981"),
+                name=f"b = ({b0:.1f}, {b1:.1f}, {b2:.1f})",
+            ))
+            # Vector c from a
+            fig.add_trace(go.Scatter3d(
+                x=[a0, a0 + c0], y=[a1, a1 + c1], z=[a2, a2 + c2],
+                mode="lines+markers",
+                line=dict(color="#22c55e", width=4),
+                marker=dict(size=[0, 6], color="#22c55e"),
+                name=f"c = ({c0:.1f}, {c1:.1f}, {c2:.1f})",
+            ))
+            # Normal b×c through the plane (both directions)
+            fig.add_trace(go.Scatter3d(
+                x=[a0 - norm_len * nn_x, a0 + norm_len * nn_x],
+                y=[a1 - norm_len * nn_y, a1 + norm_len * nn_y],
+                z=[a2 - norm_len * nn_z, a2 + norm_len * nn_z],
+                mode="lines+markers",
+                line=dict(color="#ef4444", width=4),
+                marker=dict(size=6, color="#ef4444"),
+                name=f"n = b×c = ({n_cx:.2f}, {n_cy:.2f}, {n_cz:.2f})",
+            ))
+
+            fig.update_layout(
+                height=500,
+                scene=dict(
+                    xaxis=dict(range=[-7, 7], title="x"),
+                    yaxis=dict(range=[-7, 7], title="y"),
+                    zaxis=dict(range=[-7, 7], title="z"),
+                    bgcolor="rgba(0,0,0,0)",
+                    camera=dict(eye=dict(x=1.8, y=1.8, z=1.8)),
+                ),
+                margin=dict(l=10, r=10, t=10, b=10),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption("🖱️ Drag to rotate · Green= b · Light green= c · Red= n=b×c ⟂ to both")
+
+            st.markdown(
+                f'<div class="result-box">'
+                f'<strong>Normal:</strong> n = b × c = ({b0:.1f}, {b1:.1f}, {b2:.1f}) × ({c0:.1f}, {c1:.1f}, {c2:.1f})<br>'
+                f'= ({n_cx:.3f}, {n_cy:.3f}, {n_cz:.3f})<br>'
+                f'<strong>Check:</strong> n · b = {n_cx*b0 + n_cy*b1 + n_cz*b2:.6f} (should be 0) &nbsp;|&nbsp; '
+                f'n · c = {n_cx*c0 + n_cy*c1 + n_cz*c2:.6f} (should be 0)'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    st.caption("🖱️ Drag to rotate · Scroll to zoom")
                     points_y.append(a1 + lam * b1 + mu * c1)
                     points_z.append(a2 + lam * b2 + mu * c2)
 
