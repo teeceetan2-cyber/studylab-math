@@ -648,7 +648,8 @@ elif topic == "Trigonometry Explorer":
 # ── Derivative ────────────────────────────────────────────
 elif topic == "Derivative Visualizer":
     st.markdown("## Function & Its Derivative")
-    fn_choice = st.selectbox("Function", ["x²", "x³", "sin(x)", "cos(x)", "e^x", "ln(x)"])
+    st.latex(r"\frac{d}{dx}f(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}")
+    fn_choice = st.selectbox("Function", ["x²", "x³", "sin(x)", "cos(x)", "e^x", "ln(x)", "ax²+bx+c", "ax³+bx²+cx+d"])
     x = np.linspace(-5, 5, 500)
 
     if fn_choice == "x²":
@@ -664,28 +665,58 @@ elif topic == "Derivative Visualizer":
     elif fn_choice == "ln(x)":
         mask = x > 0
         x = x[mask]; f = np.log(x[mask]); df = 1/x[mask]; label = "ln(x)"; dlabel = "1/x"
+    elif fn_choice == "ax²+bx+c":
+        ca, cb, cc = st.columns(3)
+        with ca: a_d = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="der_a")
+        with cb: b_d = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="der_b")
+        with cc: c_d = st.slider("c", -5.0, 5.0, -2.0, 0.1, key="der_c")
+        f = a_d * x**2 + b_d * x + c_d; df = 2*a_d * x + b_d
+        label = f"{a_d}x²+{b_d}x+{c_d}"; dlabel = f"{2*a_d}x+{b_d}"
+    elif fn_choice == "ax³+bx²+cx+d":
+        ca, cb, cc, cd4 = st.columns(4)
+        with ca: a_d = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="der3_a")
+        with cb: b_d = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="der3_b")
+        with cc: c_d = st.slider("c", -5.0, 5.0, -3.0, 0.1, key="der3_c")
+        with cd4: d_d = st.slider("d", -5.0, 5.0, 0.0, 0.1, key="der3_d")
+        f = a_d * x**3 + b_d * x**2 + c_d * x + d_d
+        df = 3*a_d * x**2 + 2*b_d * x + c_d
+        label = f"{a_d}x³+{b_d}x²+{c_d}x+{d_d}"; dlabel = f"{3*a_d}x²+{2*b_d}x+{c_d}"
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=f, mode="lines", name=label, line=dict(color="#6366f1", width=2)))
-    fig.add_trace(go.Scatter(x=x, y=df, mode="lines", name=f"d/dx {dlabel}",
+    fig.add_trace(go.Scatter(x=x, y=df, mode="lines", name=f"d/dx ({dlabel})",
                               line=dict(color="#ef4444", width=2, dash="dash")))
     fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
     fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), hovermode="x")
     st.plotly_chart(fig, use_container_width=True)
 
-    st.latex(r"\frac{d}{dx}f(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}")
-
 # ── Integral ─────────────────────────────────────────────
 elif topic == "Integral Area":
     st.markdown("## Definite Integral — Area Under Curve")
-    fn_choice = st.selectbox("Function", ["x²", "x³", "sin(x)", "cos(x)"], key="int_fn")
+    st.latex(r"\int_a^b f(x)\,dx")
+    fn_choice = st.selectbox("Function", ["x²", "x³", "sin(x)", "cos(x)", "ax²+bx+c", "ax³+bx²+cx+d"], key="int_fn")
     a_i, b_i = st.slider("Integration range [a, b]", -5.0, 5.0, (0.0, 2.0), 0.1)
+
+    if fn_choice == "ax²+bx+c" or fn_choice == "ax³+bx²+cx+d":
+        col1, col2, col3, col4 = st.columns(4)
+        with col1: i_a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="int_a")
+        with col2: i_b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="int_b")
+        with col3: i_c = st.slider("c", -5.0, 5.0, -2.0, 0.1, key="int_c")
+        with col4:
+            if fn_choice == "ax³+bx²+cx+d":
+                i_d = st.slider("d", -5.0, 5.0, 0.0, 0.1, key="int_d")
 
     x = np.linspace(-5, 5, 600)
     if fn_choice == "x²": f = x**2; label = "x²"
     elif fn_choice == "x³": f = x**3; label = "x³"
     elif fn_choice == "sin(x)": f = np.sin(x); label = "sin(x)"
     elif fn_choice == "cos(x)": f = np.cos(x); label = "cos(x)"
+    elif fn_choice == "ax²+bx+c":
+        f = i_a * x**2 + i_b * x + i_c
+        label = f"{i_a}x²+{i_b}x+{i_c}"
+    elif fn_choice == "ax³+bx²+cx+d":
+        f = i_a * x**3 + i_b * x**2 + i_c * x + i_d
+        label = f"{i_a}x³+{i_b}x²+{i_c}x+{i_d}"
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=f, mode="lines", name=label, line=dict(color="#6366f1", width=2)))
@@ -704,6 +735,8 @@ elif topic == "Integral Area":
     elif fn_choice == "x³": approx = np.sum(xs**3) * dx
     elif fn_choice == "sin(x)": approx = np.sum(np.sin(xs)) * dx
     elif fn_choice == "cos(x)": approx = np.sum(np.cos(xs)) * dx
+    elif fn_choice == "ax²+bx+c": approx = np.sum(i_a * xs**2 + i_b * xs + i_c) * dx
+    elif fn_choice == "ax³+bx²+cx+d": approx = np.sum(i_a * xs**3 + i_b * xs**2 + i_c * xs + i_d) * dx
 
     st.info(f"∫_{a_i}^{b_i} {label} dx ≈ {approx:.6f}")
 
