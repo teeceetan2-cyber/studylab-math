@@ -647,31 +647,64 @@ elif topic == "Trigonometry Explorer":
 
 # ── Derivative ────────────────────────────────────────────
 elif topic == "Derivative Visualizer":
-    st.markdown("## Function & Its Derivative")
+    st.markdown("## Function & Its Derivatives")
     st.latex(r"\frac{d}{dx}f(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}")
     fn_choice = st.selectbox("Function", ["x²", "x³", "sin(x)", "cos(x)", "e^x", "ln(x)", "ax²+bx+c", "ax³+bx²+cx+d"])
-    x = np.linspace(-5, 5, 500)
+    x_raw = np.linspace(-5, 5, 500)
+    x = x_raw.copy()
 
+    # --- Compute f, f', f'', stationary points & inflection points ---
     if fn_choice == "x²":
-        f = x**2; df = 2*x; label = "x²"; dlabel = "2x"
+        f = x**2; df = 2*x; ddf = 2*np.ones_like(x)
+        label = "x²"; dlabel = "2x"; ddlabel = "2"
+        stat_x = [0.0]; infl_x = []
     elif fn_choice == "x³":
-        f = x**3; df = 3*x**2; label = "x³"; dlabel = "3x²"
+        f = x**3; df = 3*x**2; ddf = 6*x
+        label = "x³"; dlabel = "3x²"; ddlabel = "6x"
+        stat_x = [0.0]; infl_x = [0.0]
     elif fn_choice == "sin(x)":
-        f = np.sin(x); df = np.cos(x); label = "sin(x)"; dlabel = "cos(x)"
+        f = np.sin(x); df = np.cos(x); ddf = -np.sin(x)
+        label = "sin(x)"; dlabel = "cos(x)"; ddlabel = "-sin(x)"
+        stat_x = []; infl_x = []
+        for n in range(-4, 5):
+            p = np.pi/2 + n*np.pi
+            if -5 <= p <= 5: stat_x.append(p)
+            p = n*np.pi
+            if -5 <= p <= 5: infl_x.append(p)
     elif fn_choice == "cos(x)":
-        f = np.cos(x); df = -np.sin(x); label = "cos(x)"; dlabel = "-sin(x)"
+        f = np.cos(x); df = -np.sin(x); ddf = -np.cos(x)
+        label = "cos(x)"; dlabel = "-sin(x)"; ddlabel = "-cos(x)"
+        stat_x = []; infl_x = []
+        for n in range(-4, 5):
+            p = n*np.pi
+            if -5 <= p <= 5: stat_x.append(p)
+            p = np.pi/2 + n*np.pi
+            if -5 <= p <= 5: infl_x.append(p)
     elif fn_choice == "e^x":
-        f = np.exp(x); df = np.exp(x); label = "eˣ"; dlabel = "eˣ"
+        f = np.exp(x); df = np.exp(x); ddf = np.exp(x)
+        label = "eˣ"; dlabel = "eˣ"; ddlabel = "eˣ"
+        stat_x = []; infl_x = []
     elif fn_choice == "ln(x)":
         mask = x > 0
-        x = x[mask]; f = np.log(x[mask]); df = 1/x[mask]; label = "ln(x)"; dlabel = "1/x"
+        x = x[mask]
+        f = np.log(x); df = 1/x; ddf = -1/x**2
+        label = "ln(x)"; dlabel = "1/x"; ddlabel = "-1/x²"
+        stat_x = []; infl_x = []
     elif fn_choice == "ax²+bx+c":
         ca, cb, cc = st.columns(3)
         with ca: a_d = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="der_a")
         with cb: b_d = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="der_b")
         with cc: c_d = st.slider("c", -5.0, 5.0, -2.0, 0.1, key="der_c")
-        f = a_d * x**2 + b_d * x + c_d; df = 2*a_d * x + b_d
-        label = f"{a_d}x²+{b_d}x+{c_d}"; dlabel = f"{2*a_d}x+{b_d}"
+        f = a_d * x**2 + b_d * x + c_d
+        df = 2*a_d * x + b_d
+        ddf = 2*a_d * np.ones_like(x)
+        label = f"{a_d}x²+{b_d}x+{c_d}"
+        dlabel = f"{2*a_d}x+{b_d}"
+        ddlabel = f"{2*a_d}"
+        # Stationary: f'(x)=0 -> x = -b/(2a)
+        stat_x = [ -b_d/(2*a_d) ] if abs(a_d) > 1e-9 else []
+        # Inflection: f''(x)=2a=0 never true (unless a=0, degenerate)
+        infl_x = []
     elif fn_choice == "ax³+bx²+cx+d":
         ca, cb, cc, cd4 = st.columns(4)
         with ca: a_d = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="der3_a")
@@ -680,14 +713,82 @@ elif topic == "Derivative Visualizer":
         with cd4: d_d = st.slider("d", -5.0, 5.0, 0.0, 0.1, key="der3_d")
         f = a_d * x**3 + b_d * x**2 + c_d * x + d_d
         df = 3*a_d * x**2 + 2*b_d * x + c_d
-        label = f"{a_d}x³+{b_d}x²+{c_d}x+{d_d}"; dlabel = f"{3*a_d}x²+{2*b_d}x+{c_d}"
+        ddf = 6*a_d * x + 2*b_d
+        label = f"{a_d}x³+{b_d}x²+{c_d}x+{d_d}"
+        dlabel = f"{3*a_d}x²+{2*b_d}x+{c_d}"
+        ddlabel = f"{6*a_d}x+{2*b_d}"
+        # Stationary: solve 3a x² + 2b x + c = 0
+        stat_x = []
+        if abs(a_d) > 1e-9:
+            disc = (2*b_d)**2 - 4*3*a_d*c_d
+            if disc >= 0:
+                stat_x.append((-2*b_d + math.sqrt(disc)) / (6*a_d))
+                stat_x.append((-2*b_d - math.sqrt(disc)) / (6*a_d))
+            # Filter to visible range
+            stat_x = [sx for sx in stat_x if -5 <= sx <= 5]
+        # Inflection: f''(x)=0 -> 6a x + 2b = 0 -> x = -b/(3a)
+        infl_x = [ -b_d/(3*a_d) ] if abs(a_d) > 1e-9 and -5 <= -b_d/(3*a_d) <= 5 else []
+
+    # --- Clamp y-range for cubic to avoid extreme values ---
+    all_y = np.concatenate([f, df, ddf])
+    y_min, y_max = np.min(all_y), np.max(all_y)
+    y_range_auto = [y_min - 0.1*(y_max-y_min), y_max + 0.1*(y_max-y_min)]
+    # For cubic/quadratic with wide range, clamp to [-20, 20] for better viewing
+    if "ax²" in fn_choice or "ax³" in fn_choice:
+        y_margin = max(abs(y_min), abs(y_max)) * 0.15
+        y_lo = max(y_min - y_margin, -25)
+        y_hi = min(y_max + y_margin, 25)
+        y_range = [y_lo, y_hi]
+    else:
+        y_range = y_range_auto
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=x, y=f, mode="lines", name=label, line=dict(color="#6366f1", width=2)))
-    fig.add_trace(go.Scatter(x=x, y=df, mode="lines", name=f"d/dx ({dlabel})",
+    # f(x)
+    fig.add_trace(go.Scatter(x=x, y=f, mode="lines", name=label,
+                              line=dict(color="#6366f1", width=2)))
+    # f'(x)
+    fig.add_trace(go.Scatter(x=x, y=df, mode="lines", name=f"f' = {dlabel}",
                               line=dict(color="#ef4444", width=2, dash="dash")))
+    # f''(x)
+    fig.add_trace(go.Scatter(x=x, y=ddf, mode="lines", name=f"f'' = {ddlabel}",
+                              line=dict(color="#22c55e", width=2, dash="dot")))
+
+    # --- Stationary point markers ---
+    if stat_x:
+        stat_y = []
+        for sx in stat_x:
+            idx = np.argmin(np.abs(x - sx))
+            stat_y.append(f[idx])
+        fig.add_trace(go.Scatter(x=stat_x, y=stat_y, mode="markers",
+                                  name="Stationary point",
+                                  marker=dict(color="#f59e0b", size=12, symbol="diamond",
+                                              line=dict(color="#000", width=1))))
+        for sx, sy in zip(stat_x, stat_y):
+            fig.add_annotation(x=sx, y=sy, text=f"({sx:.3f}, {sy:.3f})",
+                               showarrow=True, arrowhead=2, arrowcolor="#f59e0b",
+                               font=dict(size=11, color="#f59e0b"),
+                               bgcolor="rgba(0,0,0,0.6)", bordercolor="#f59e0b", borderwidth=1)
+
+    # --- Inflection point markers ---
+    if infl_x:
+        infl_y = []
+        for ix in infl_x:
+            idx = np.argmin(np.abs(x - ix))
+            infl_y.append(f[idx])
+        fig.add_trace(go.Scatter(x=infl_x, y=infl_y, mode="markers",
+                                  name="Inflection point",
+                                  marker=dict(color="#a855f7", size=12, symbol="circle",
+                                              line=dict(color="#000", width=1))))
+        for ix, iy in zip(infl_x, infl_y):
+            fig.add_annotation(x=ix, y=iy, text=f"({ix:.3f}, {iy:.3f})",
+                               showarrow=True, arrowhead=2, arrowcolor="#a855f7",
+                               font=dict(size=11, color="#a855f7"),
+                               bgcolor="rgba(0,0,0,0.6)", bordercolor="#a855f7", borderwidth=1)
+
     fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
-    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), hovermode="x")
+    fig.update_layout(height=450, margin=dict(l=20, r=20, t=20, b=20), hovermode="x unified",
+                      yaxis=dict(range=y_range),
+                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
     st.plotly_chart(fig, use_container_width=True)
 
 # ── Integral ─────────────────────────────────────────────
