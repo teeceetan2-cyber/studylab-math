@@ -525,7 +525,11 @@ elif topic == "Cross Product (3D)":
 
 # ── Shortest Distance ────────────────────────────────────
 elif topic == "Shortest Distance":
-    st.markdown("## Shortest Distance Calculator")
+    st.markdown("## Shortest Distance — Vector Projection")
+    st.markdown(
+        "All distances computed by **projecting** AP onto a direction vector, "
+        "then taking the perpendicular component."
+    )
 
     dist_mode = st.radio("Mode", [
         "Point → Line (2D)",
@@ -533,68 +537,96 @@ elif topic == "Shortest Distance":
         "Point → Plane",
     ], horizontal=True)
 
+    # ── Point → Line (2D) with Vector Projection ──────────────
     if dist_mode == "Point → Line (2D)":
-        st.markdown("### Point to Line Distance (2D)")
-        st.latex(r"d = \frac{|ax_0 + by_0 + c|}{\sqrt{a^2 + b^2}}")
+        st.markdown("### Point to Line (2D) — Vector Projection")
+        st.latex(r"\text{proj}_{\vec{d}}(\vec{AP}) = "
+                 r"\frac{\vec{AP} \cdot \vec{d}}{|\vec{d}|^2}\,\vec{d}")
+        st.latex(r"d = |\vec{AP} - \text{proj}_{\vec{d}}(\vec{AP})|")
 
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("**Line: ax + by + c = 0**")
-            a = st.slider("a", -10.0, 10.0, 2.0, 0.1, key="d_a")
-            b = st.slider("b", -10.0, 10.0, -3.0, 0.1, key="d_b")
-            c = st.slider("c", -10.0, 10.0, 6.0, 0.1, key="d_c")
+            st.markdown("**Line: point A + direction d**")
+            ax = st.slider("Aₓ", -8.0, 8.0, -2.0, 0.1, key="l2_ax")
+            ay = st.slider("Aᵧ", -8.0, 8.0, 1.0, 0.1, key="l2_ay")
+            dx = st.slider("dₓ", -5.0, 5.0, 3.0, 0.1, key="l2_dx")
+            dy = st.slider("dᵧ", -5.0, 5.0, 1.0, 0.1, key="l2_dy")
         with col2:
-            st.markdown("**Point P = (x₀, y₀)**")
-            px = st.slider("x₀", -10.0, 10.0, 4.0, 0.1, key="d_px")
-            py = st.slider("y₀", -10.0, 10.0, 5.0, 0.1, key="d_py")
+            st.markdown("**Point P**")
+            px = st.slider("Pₓ", -8.0, 8.0, 4.0, 0.1, key="l2_px")
+            py = st.slider("Pᵧ", -8.0, 8.0, 5.0, 0.1, key="l2_py")
 
-        denom = math.sqrt(a**2 + b**2)
-        if denom == 0:
-            st.error("Invalid line: a = b = 0")
+        # Vector AP
+        apx, apy = px - ax, py - ay
+        mag_d_sq = dx**2 + dy**2
+
+        if mag_d_sq < 1e-12:
+            st.error("Direction vector d cannot be zero.")
         else:
-            dist = abs(a * px + b * py + c) / denom
-            # Foot of perpendicular
-            # The line's normal vector is (a, b). The foot is found by projecting.
-            # line: ax+by+c=0, point P=(px,py)
-            # foot F = (px - a*t, py - b*t) where t = (a*px+b*py+c)/(a²+b²)
-            t_val = (a * px + b * py + c) / (a**2 + b**2)
-            fx = px - a * t_val
-            fy = py - b * t_val
+            # Scalar projection (t) of AP onto d
+            t_scalar = (apx * dx + apy * dy) / mag_d_sq
+            # Parallel component = projection onto line
+            par_x = t_scalar * dx
+            par_y = t_scalar * dy
+            # Foot = A + parallel component
+            fx, fy = ax + par_x, ay + par_y
+            # Perpendicular component
+            perp_x = apx - par_x
+            perp_y = apy - par_y
+            dist = math.sqrt(perp_x**2 + perp_y**2)
 
             st.success(f"**Shortest distance d = {dist:.6f}**")
 
             # Visualization
-            x_line = np.linspace(-10, 10, 400)
-            if abs(b) > 0.001:
-                y_line = (-a * x_line - c) / b
-            else:
-                x_line = np.full(400, -c / a)
-                y_line = np.linspace(-10, 10, 400)
+            t_vis = np.linspace(-10, 10, 400)
+            line_x = ax + t_vis * dx
+            line_y = ay + t_vis * dy
 
             fig = go.Figure()
+            # The line
             fig.add_trace(go.Scatter(
-                x=x_line, y=y_line, mode="lines",
+                x=line_x, y=line_y, mode="lines",
                 line=dict(color="#6366f1", width=2),
-                name=f"{a}x + {b}y + {c} = 0",
+                name="Line",
             ))
-            # Point
+            # Vector AP (from A to P)
+            fig.add_trace(go.Scatter(
+                x=[ax, px], y=[ay, py], mode="lines",
+                line=dict(color="#8b5cf6", width=2, dash="dot"),
+                name="AP",
+            ))
+            # Parallel component (along line: A→Foot)
+            fig.add_trace(go.Scatter(
+                x=[ax, fx], y=[ay, fy], mode="lines+markers",
+                line=dict(color="#10b981", width=3),
+                marker=dict(size=[0, 8], color="#10b981"),
+                name=f"proj = ({par_x:.2f}, {par_y:.2f})",
+            ))
+            # Point P
             fig.add_trace(go.Scatter(
                 x=[px], y=[py], mode="markers",
                 marker=dict(size=10, color="#ef4444", symbol="x"),
                 name=f"P({px:.1f}, {py:.1f})",
             ))
-            # Perpendicular line (foot)
+            # Point A
+            fig.add_trace(go.Scatter(
+                x=[ax], y=[ay], mode="markers",
+                marker=dict(size=8, color="#f59e0b"),
+                name=f"A({ax:.1f}, {ay:.1f})",
+            ))
+            # Perpendicular (from P to foot)
             fig.add_trace(go.Scatter(
                 x=[px, fx], y=[py, fy], mode="lines",
-                line=dict(color="#f59e0b", width=2, dash="dash"),
-                name=f"d = {dist:.4f}",
+                line=dict(color="#ef4444", width=2, dash="dash"),
+                name=f"⟂ d = {dist:.4f}",
             ))
-            # Foot point
+            # Foot
             fig.add_trace(go.Scatter(
                 x=[fx], y=[fy], mode="markers",
                 marker=dict(size=8, color="#10b981"),
                 name=f"Foot({fx:.3f}, {fy:.3f})",
             ))
+
             fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
             fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dash"))
             fig.update_layout(
@@ -607,15 +639,20 @@ elif topic == "Shortest Distance":
 
             st.markdown(
                 f'<div class="result-box">'
-                f'd = |{a}×{px:.1f} + {b}×{py:.1f} + {c}| / √({a}² + {b}²)<br>'
-                f'd = |{a*px + b*py + c:.3f}| / {denom:.4f} = <strong>{dist:.6f}</strong>'
+                f'<strong>1.</strong> AP = P − A = ({apx:.2f}, {apy:.2f})<br>'
+                f'<strong>2.</strong> Scalar projection: t = (AP·d) / |d|² = {apx*dx+apy*dy:.4f} / {mag_d_sq:.4f} = {t_scalar:.4f}<br>'
+                f'<strong>3.</strong> Parallel (along line): t·d = ({par_x:.4f}, {par_y:.4f})<br>'
+                f'<strong>4.</strong> Foot = A + parallel = ({fx:.4f}, {fy:.4f})<br>'
+                f'<strong>5.</strong> Perpendicular = AP − parallel = ({perp_x:.4f}, {perp_y:.4f})<br>'
+                f'<strong>6.</strong> Distance = |⟂| = √({perp_x**2:.4f} + {perp_y**2:.4f}) = <strong>{dist:.6f}</strong>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
+    # ── Point → Line (3D) with Vector Projection ──────────────
     elif dist_mode == "Point → Line (3D)":
-        st.markdown("### Point to Line Distance (3D)")
-        st.latex(r"d = \frac{|\vec{PA} \times \vec{d}|}{|\vec{d}|}")
+        st.markdown("### Point to Line (3D) — Vector Projection")
+        st.latex(r"d = |\vec{AP} - \text{proj}_{\vec{d}}(\vec{AP})|")
 
         col1, col2 = st.columns(2)
         with col1:
@@ -632,37 +669,47 @@ elif topic == "Shortest Distance":
             py = st.slider("Pᵧ", -5.0, 5.0, 4.0, 0.1, key="d3_py")
             pz = st.slider("P_z", -5.0, 5.0, 2.0, 0.1, key="d3_pz")
 
-        mag_d = math.sqrt(dx**2 + dy**2 + dz**2)
-        if mag_d == 0:
+        mag_d_sq = dx**2 + dy**2 + dz**2
+        if mag_d_sq < 1e-12:
             st.error("Direction vector d cannot be zero.")
         else:
-            # PA = A - P
-            pax, pay, paz = a0 - px, a1 - py, a2 - pz
-            # Cross product PA × d
-            cpx = pay * dz - paz * dy
-            cpy = paz * dx - pax * dz
-            cpz = pax * dy - pay * dx
-            dist = math.sqrt(cpx**2 + cpy**2 + cpz**2) / mag_d
-
-            # Foot: project A onto line
-            # t = (P - A) · d / |d|²
-            t_pa = ((px - a0) * dx + (py - a1) * dy + (pz - a2) * dz) / (mag_d**2)
-            fx = a0 + t_pa * dx
-            fy = a1 + t_pa * dy
-            fz = a2 + t_pa * dz
+            # AP
+            apx, apy, apz = px - a0, py - a1, pz - a2
+            # Scalar projection
+            t_scalar = (apx * dx + apy * dy + apz * dz) / mag_d_sq
+            # Parallel = projection onto line
+            par_x, par_y, par_z = t_scalar * dx, t_scalar * dy, t_scalar * dz
+            # Foot
+            fx, fy, fz = a0 + par_x, a1 + par_y, a2 + par_z
+            # Perpendicular
+            perp_x, perp_y, perp_z = apx - par_x, apy - par_y, apz - par_z
+            dist = math.sqrt(perp_x**2 + perp_y**2 + perp_z**2)
 
             st.success(f"**Shortest distance d = {dist:.6f}**")
 
-            # Visualization
-            t_line = np.linspace(-5, 5, 100)
+            t_vis = np.linspace(-5, 5, 100)
             fig = go.Figure()
             # Line
             fig.add_trace(go.Scatter3d(
-                x=[a0 + ti * dx for ti in t_line],
-                y=[a1 + ti * dy for ti in t_line],
-                z=[a2 + ti * dz for ti in t_line],
+                x=[a0 + ti * dx for ti in t_vis],
+                y=[a1 + ti * dy for ti in t_vis],
+                z=[a2 + ti * dz for ti in t_vis],
                 mode="lines", line=dict(color="#6366f1", width=4),
                 name="Line",
+            ))
+            # AP (from A to P)
+            fig.add_trace(go.Scatter3d(
+                x=[a0, px], y=[a1, py], z=[a2, pz],
+                mode="lines", line=dict(color="#8b5cf6", width=2, dash="dot"),
+                name="AP",
+            ))
+            # Parallel (A → Foot)
+            fig.add_trace(go.Scatter3d(
+                x=[a0, fx], y=[a1, fy], z=[a2, fz],
+                mode="lines+markers",
+                line=dict(color="#10b981", width=3),
+                marker=dict(size=[0, 6], color="#10b981"),
+                name=f"proj = ({par_x:.2f}, {par_y:.2f}, {par_z:.2f})",
             ))
             # Point P
             fig.add_trace(go.Scatter3d(
@@ -670,11 +717,11 @@ elif topic == "Shortest Distance":
                 mode="markers", marker=dict(size=8, color="#ef4444"),
                 name=f"P({px:.1f}, {py:.1f}, {pz:.1f})",
             ))
-            # Perpendicular
+            # Perpendicular (P → Foot)
             fig.add_trace(go.Scatter3d(
                 x=[px, fx], y=[py, fy], z=[pz, fz],
-                mode="lines", line=dict(color="#f59e0b", width=3, dash="dash"),
-                name=f"d = {dist:.4f}",
+                mode="lines", line=dict(color="#ef4444", width=3, dash="dash"),
+                name=f"⟂ d = {dist:.4f}",
             ))
             # Foot
             fig.add_trace(go.Scatter3d(
@@ -685,103 +732,8 @@ elif topic == "Shortest Distance":
             # Point A
             fig.add_trace(go.Scatter3d(
                 x=[a0], y=[a1], z=[a2],
-                mode="markers", marker=dict(size=5, color="white"),
-                name="A (on line)",
-            ))
-
-            lim = 6
-            fig.update_layout(
-                height=500,
-                scene=dict(
-                    xaxis=dict(range=[-lim, lim], title="x"),
-                    yaxis=dict(range=[-lim, lim], title="y"),
-                    zaxis=dict(range=[-lim, lim], title="z"),
-                    bgcolor="rgba(0,0,0,0)",
-                    camera=dict(eye=dict(x=1.8, y=1.8, z=1.8)),
-                ),
-                margin=dict(l=10, r=10, t=10, b=10),
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            st.caption("🖱️ Drag to rotate · Scroll to zoom")
-
-    elif dist_mode == "Point → Plane":
-        st.markdown("### Point to Plane Distance")
-        st.latex(r"d = \frac{|ax_0 + by_0 + cz_0 + d|}{\sqrt{a^2 + b^2 + c^2}}")
-        st.markdown("**Plane: ax + by + cz + d = 0**")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="dp_a")
-            b = st.slider("b", -5.0, 5.0, 2.0, 0.1, key="dp_b")
-            c = st.slider("c", -5.0, 5.0, 2.0, 0.1, key="dp_c")
-            d = st.slider("d", -10.0, 10.0, -4.0, 0.1, key="dp_d")
-        with col2:
-            st.markdown("**Point P**")
-            px = st.slider("Pₓ", -5.0, 5.0, 3.0, 0.1, key="dp_px")
-            py = st.slider("Pᵧ", -5.0, 5.0, 1.0, 0.1, key="dp_py")
-            pz = st.slider("P_z", -5.0, 5.0, -2.0, 0.1, key="dp_pz")
-
-        denom = math.sqrt(a**2 + b**2 + c**2)
-        if denom == 0:
-            st.error("Invalid plane: a = b = c = 0")
-        else:
-            dist = abs(a * px + b * py + c * pz + d) / denom
-            # Foot of perpendicular
-            # F = P - (a*px+b*py+c*pz+d)/(a²+b²+c²) * (a,b,c)
-            factor = (a * px + b * py + c * pz + d) / (a**2 + b**2 + c**2)
-            fx = px - a * factor
-            fy = py - b * factor
-            fz = pz - c * factor
-
-            st.success(f"**Shortest distance d = {dist:.6f}**")
-
-            # Render plane as surface
-            xx, zz = np.meshgrid(np.linspace(-5, 5, 20), np.linspace(-5, 5, 20))
-            if abs(c) > 0.001:
-                yy = (-a * xx - c * zz - d) / b if abs(b) > 0.001 else np.full_like(xx, (-a * xx - c * zz - d) / max(abs(b), 0.001))
-                if abs(b) < 0.001:
-                    yy = np.full_like(xx, 0)  # fallback
-            else:
-                yy = (-a * xx - d) / b if abs(b) > 0.001 else np.full_like(xx, 0)
-                zz = np.full_like(xx, 5)
-
-            mag_normal = math.sqrt(a**2 + b**2 + c**2)
-            nx = a / mag_normal
-            ny = b / mag_normal
-            nz = c / mag_normal
-
-            fig = go.Figure()
-            # Plane surface
-            fig.add_trace(go.Surface(
-                x=xx, y=yy, z=zz,
-                colorscale=[[0, "#6366f1"], [1, "#6366f1"]],
-                opacity=0.3, showscale=False, name="Plane",
-            ))
-            # Normal vector (from origin or plane center)
-            fig.add_trace(go.Scatter3d(
-                x=[0, nx * 3], y=[0, ny * 3], z=[0, nz * 3],
-                mode="lines+markers",
-                line=dict(color="#8b5cf6", width=3, dash="dash"),
-                marker=dict(size=[0, 6], color="#8b5cf6"),
-                name="Normal n",
-            ))
-            # Point P
-            fig.add_trace(go.Scatter3d(
-                x=[px], y=[py], z=[pz],
-                mode="markers", marker=dict(size=8, color="#ef4444"),
-                name=f"P({px:.1f}, {py:.1f}, {pz:.1f})",
-            ))
-            # Perpendicular to plane
-            fig.add_trace(go.Scatter3d(
-                x=[px, fx], y=[py, fy], z=[pz, fz],
-                mode="lines", line=dict(color="#f59e0b", width=3, dash="dash"),
-                name=f"d = {dist:.4f}",
-            ))
-            # Foot point
-            fig.add_trace(go.Scatter3d(
-                x=[fx], y=[fy], z=[fz],
-                mode="markers", marker=dict(size=6, color="#10b981"),
-                name=f"Foot({fx:.3f}, {fy:.3f}, {fz:.3f})",
+                mode="markers", marker=dict(size=5, color="#f59e0b"),
+                name="A",
             ))
 
             fig.update_layout(
@@ -796,12 +748,137 @@ elif topic == "Shortest Distance":
                 margin=dict(l=10, r=10, t=10, b=10),
             )
             st.plotly_chart(fig, use_container_width=True)
-            st.caption("🖱️ Drag to rotate · Scroll to zoom · Purple dashed = plane normal")
+            st.caption("🖱️ Drag to rotate · Green = projection · Red dashed = ⟂ distance")
 
             st.markdown(
                 f'<div class="result-box">'
-                f'd = |{a}×{px:.1f} + {b}×{py:.1f} + {c}×{pz:.1f} + {d}| / √({a}² + {b}² + {c}²)<br>'
-                f'd = |{a*px + b*py + c*pz + d:.3f}| / {denom:.4f} = <strong>{dist:.6f}</strong>'
+                f'<strong>1.</strong> AP = ({apx:.2f}, {apy:.2f}, {apz:.2f})<br>'
+                f'<strong>2.</strong> Scalar proj: t = (AP·d)/|d|² = {apx*dx+apy*dy+apz*dz:.4f}/{mag_d_sq:.4f} = {t_scalar:.4f}<br>'
+                f'<strong>3.</strong> Parallel: t·d = ({par_x:.4f}, {par_y:.4f}, {par_z:.4f})<br>'
+                f'<strong>4.</strong> Foot = A + parallel = ({fx:.4f}, {fy:.4f}, {fz:.4f})<br>'
+                f'<strong>5.</strong> ⟂ = AP − parallel = ({perp_x:.4f}, {perp_y:.4f}, {perp_z:.4f})<br>'
+                f'<strong>6.</strong> d = |⟂| = <strong>{dist:.6f}</strong>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    # ── Point → Plane with Vector Projection ──────────────────
+    elif dist_mode == "Point → Plane":
+        st.markdown("### Point to Plane — Normal Projection")
+        st.latex(r"d = |\vec{AP} \cdot \hat{n}|  \quad  \hat{n} = \frac{\vec{n}}{|\vec{n}|}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**Plane: point A + normal n**")
+            ap0 = st.slider("Aₓ", -5.0, 5.0, 0.0, 0.1, key="dp_a0")
+            ap1 = st.slider("Aᵧ", -5.0, 5.0, 0.0, 0.1, key="dp_a1")
+            ap2 = st.slider("A_z", -5.0, 5.0, 0.0, 0.1, key="dp_a2")
+            nx = st.slider("nₓ", -5.0, 5.0, 1.0, 0.1, key="dp_nx")
+            ny = st.slider("nᵧ", -5.0, 5.0, 2.0, 0.1, key="dp_ny")
+            nz = st.slider("n_z", -5.0, 5.0, 2.0, 0.1, key="dp_nz")
+        with col2:
+            st.markdown("**Point P**")
+            px = st.slider("Pₓ", -5.0, 5.0, 3.0, 0.1, key="dp_px")
+            py = st.slider("Pᵧ", -5.0, 5.0, 1.0, 0.1, key="dp_py")
+            pz = st.slider("P_z", -5.0, 5.0, -2.0, 0.1, key="dp_pz")
+
+        mag_n = math.sqrt(nx**2 + ny**2 + nz**2)
+        if mag_n < 1e-12:
+            st.error("Normal vector cannot be zero.")
+        else:
+            # Unit normal
+            nx_hat, ny_hat, nz_hat = nx / mag_n, ny / mag_n, nz / mag_n
+            # AP
+            apx, apy, apz = px - ap0, py - ap1, pz - ap2
+            # Scalar projection of AP onto n̂
+            dist = abs(apx * nx_hat + apy * ny_hat + apz * nz_hat)
+            # Foot = P - (AP·n̂) * n̂
+            proj = apx * nx_hat + apy * ny_hat + apz * nz_hat
+            fx = px - proj * nx_hat
+            fy = py - proj * ny_hat
+            fz = pz - proj * nz_hat
+
+            st.success(f"**Shortest distance d = {dist:.6f}**")
+
+            # Plane surface for visualization
+            grid = np.linspace(-6, 6, 20)
+            if abs(nz) > 0.001:
+                xx, yy = np.meshgrid(grid, grid)
+                # plane: nx(x-ap0) + ny(y-ap1) + nz(z-ap2) = 0
+                zz = (-nx * (xx - ap0) - ny * (yy - ap1)) / nz + ap2
+            elif abs(ny) > 0.001:
+                xx, zz = np.meshgrid(grid, grid)
+                yy = (-nx * (xx - ap0) - nz * (zz - ap2)) / ny + ap1
+            else:
+                yy, zz = np.meshgrid(grid, grid)
+                xx = (-ny * (yy - ap1) - nz * (zz - ap2)) / nx + ap0
+
+            fig = go.Figure()
+            # Plane
+            fig.add_trace(go.Surface(
+                x=xx, y=yy, z=zz,
+                colorscale=[[0, "#6366f1"], [1, "#6366f1"]],
+                opacity=0.25, showscale=False, name="Plane",
+            ))
+            # Normal from A
+            fig.add_trace(go.Scatter3d(
+                x=[ap0, ap0 + nx], y=[ap1, ap1 + ny], z=[ap2, ap2 + nz],
+                mode="lines+markers",
+                line=dict(color="#8b5cf6", width=3, dash="dash"),
+                marker=dict(size=[0, 6], color="#8b5cf6"),
+                name=f"n = ({nx:.1f}, {ny:.1f}, {nz:.1f})",
+            ))
+            # AP (from A to P)
+            fig.add_trace(go.Scatter3d(
+                x=[ap0, px], y=[ap1, py], z=[ap2, pz],
+                mode="lines", line=dict(color="#8b5cf6", width=2, dash="dot"),
+                name="AP",
+            ))
+            # Point P
+            fig.add_trace(go.Scatter3d(
+                x=[px], y=[py], z=[pz],
+                mode="markers", marker=dict(size=8, color="#ef4444"),
+                name=f"P({px:.1f}, {py:.1f}, {pz:.1f})",
+            ))
+            # Point A on plane
+            fig.add_trace(go.Scatter3d(
+                x=[ap0], y=[ap1], z=[ap2],
+                mode="markers", marker=dict(size=6, color="#f59e0b"),
+                name="A (on plane)",
+            ))
+            # Perpendicular (P → Foot)
+            fig.add_trace(go.Scatter3d(
+                x=[px, fx], y=[py, fy], z=[pz, fz],
+                mode="lines", line=dict(color="#ef4444", width=3, dash="dash"),
+                name=f"d = {dist:.4f}",
+            ))
+            # Foot
+            fig.add_trace(go.Scatter3d(
+                x=[fx], y=[fy], z=[fz],
+                mode="markers", marker=dict(size=6, color="#10b981"),
+                name=f"Foot({fx:.3f}, {fy:.3f}, {fz:.3f})",
+            ))
+
+            fig.update_layout(
+                height=500,
+                scene=dict(
+                    xaxis=dict(range=[-7, 7], title="x"),
+                    yaxis=dict(range=[-7, 7], title="y"),
+                    zaxis=dict(range=[-7, 7], title="z"),
+                    bgcolor="rgba(0,0,0,0)",
+                    camera=dict(eye=dict(x=1.8, y=1.8, z=1.8)),
+                ),
+                margin=dict(l=10, r=10, t=10, b=10),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption("🖱️ Drag to rotate · Purple dashed = normal n · Red dashed = ⟂ distance")
+
+            st.markdown(
+                f'<div class="result-box">'
+                f'<strong>1.</strong> AP = P − A = ({apx:.2f}, {apy:.2f}, {apz:.2f})<br>'
+                f'<strong>2.</strong> Unit normal: n̂ = ({nx_hat:.4f}, {ny_hat:.4f}, {nz_hat:.4f})<br>'
+                f'<strong>3.</strong> Project AP onto n̂: AP·n̂ = {apx*nx_hat+apy*ny_hat+apz*nz_hat:.4f}<br>'
+                f'<strong>4.</strong> Distance = |AP·n̂| = <strong>{dist:.6f}</strong>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
