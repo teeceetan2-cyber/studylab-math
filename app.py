@@ -24,6 +24,7 @@ category = st.sidebar.selectbox("Category", [
     "🔢 Algebra",
     "📐 Trigonometry",
     "📈 Calculus",
+    "🧭 Vectors",
     "🧊 Geometry",
 ])
 
@@ -31,6 +32,7 @@ topic_map = {
     "🔢 Algebra": ["Quadratic Equation"],
     "📐 Trigonometry": ["Trigonometry Explorer", "Unit Circle"],
     "📈 Calculus": ["Derivative Visualizer", "Integral Area"],
+    "🧭 Vectors": ["2D Vector Explorer", "Vector Addition", "Dot Product"],
     "🧊 Geometry": ["3D Geometry"],
 }
 
@@ -169,6 +171,189 @@ elif topic == "Integral Area":
     elif fn_choice == "cos(x)": approx = np.sum(np.cos(xs)) * dx
 
     st.info(f"∫_{a_i}^{b_i} {label} dx ≈ {approx:.6f}")
+
+# ── 2D Vector Explorer ──────────────────────────────────
+if topic == "2D Vector Explorer":
+    st.markdown("## 2D Vector Explorer")
+    col1, col2 = st.columns(2)
+    with col1:
+        vx = st.slider("x-component", -10.0, 10.0, 3.0, 0.1, key="vec_vx")
+    with col2:
+        vy = st.slider("y-component", -10.0, 10.0, 4.0, 0.1, key="vec_vy")
+
+    magnitude = math.sqrt(vx**2 + vy**2)
+    angle = math.degrees(math.atan2(vy, vx))
+
+    fig = go.Figure()
+    # Vector arrow
+    fig.add_trace(go.Scatter(
+        x=[0, vx], y=[0, vy], mode="lines+markers",
+        line=dict(color="#6366f1", width=3),
+        marker=dict(size=[0, 10], color=["#6366f1", "#ef4444"]),
+        name=f"v = ({vx:.1f}, {vy:.1f})",
+    ))
+    # Component dashed lines
+    fig.add_trace(go.Scatter(
+        x=[0, vx], y=[vy, vy], mode="lines",
+        line=dict(color="#f59e0b", width=1, dash="dot"),
+        name=f"x = {vx:.1f}", showlegend=False,
+    ))
+    fig.add_trace(go.Scatter(
+        x=[vx, vx], y=[0, vy], mode="lines",
+        line=dict(color="#10b981", width=1, dash="dot"),
+        name=f"y = {vy:.1f}", showlegend=False,
+    ))
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dash"))
+
+    max_r = max(abs(vx), abs(vy), 5) + 1
+    fig.update_layout(
+        height=450,
+        xaxis=dict(range=[-max_r, max_r], scaleanchor="y", title="x"),
+        yaxis=dict(range=[-max_r, max_r], title="y"),
+        margin=dict(l=20, r=20, t=20, b=20),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1: st.metric("Magnitude |v|", f"{magnitude:.4f}")
+    with c2: st.metric("Direction θ", f"{angle:.2f}°")
+    with c3: st.metric("Unit vector", f"({vx/magnitude:.4f}, {vy/magnitude:.4f})" if magnitude > 0 else "(0, 0)")
+
+    st.latex(r"\vec{v} = " + f"{vx:.1f}" + r"\hat{i} + " + f"{vy:.1f}" + r"\hat{j}")
+    st.latex(r"|\vec{v}| = \sqrt{" + f"{vx:.1f}" + r"^2 + " + f"{vy:.1f}" + r"^2} = " + f"{magnitude:.4f}")
+
+# ── Vector Addition ──────────────────────────────────────
+elif topic == "Vector Addition":
+    st.markdown("## Vector Addition")
+    st.markdown("Adjust two vectors to see their sum.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Vector a**")
+        ax = st.slider("aₓ", -10.0, 10.0, 3.0, 0.1)
+        ay = st.slider("aᵧ", -10.0, 10.0, 1.0, 0.1)
+    with col2:
+        st.markdown("**Vector b**")
+        bx = st.slider("bₓ", -10.0, 10.0, 1.0, 0.1)
+        by = st.slider("bᵧ", -10.0, 10.0, 3.0, 0.1)
+
+    rx, ry = ax + bx, ay + by
+
+    fig = go.Figure()
+    # Vector a
+    fig.add_trace(go.Scatter(
+        x=[0, ax], y=[0, ay], mode="lines+markers",
+        line=dict(color="#6366f1", width=3),
+        marker=dict(size=[0, 8], color="#6366f1"),
+        name=f"a = ({ax:.1f}, {ay:.1f})",
+    ))
+    # Vector b (from tip of a)
+    fig.add_trace(go.Scatter(
+        x=[ax, ax+bx], y=[ay, ay+by], mode="lines+markers",
+        line=dict(color="#10b981", width=3),
+        marker=dict(size=[0, 8], color="#10b981"),
+        name=f"b = ({bx:.1f}, {by:.1f})",
+    ))
+    # Resultant r
+    fig.add_trace(go.Scatter(
+        x=[0, rx], y=[0, ry], mode="lines+markers",
+        line=dict(color="#ef4444", width=3, dash="dash"),
+        marker=dict(size=[0, 10], color="#ef4444"),
+        name=f"a+b = ({rx:.1f}, {ry:.1f})",
+    ))
+    # Parallelogram: vector b from origin
+    fig.add_trace(go.Scatter(
+        x=[0, bx], y=[0, by], mode="lines",
+        line=dict(color="#10b981", width=1, dash="dot"),
+        showlegend=False,
+    ))
+    # Parallelogram: a from tip of b
+    fig.add_trace(go.Scatter(
+        x=[bx, bx+ax], y=[by, by+ay], mode="lines",
+        line=dict(color="#6366f1", width=1, dash="dot"),
+        showlegend=False,
+    ))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dash"))
+    lim = max(abs(ax), abs(ay), abs(bx), abs(by), abs(rx), abs(ry), 5) + 1
+    fig.update_layout(
+        height=450,
+        xaxis=dict(range=[-lim, lim], scaleanchor="y", title="x"),
+        yaxis=dict(range=[-lim, lim], title="y"),
+        margin=dict(l=20, r=20, t=20, b=20),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1: st.metric("a + b", f"({rx:.1f}, {ry:.1f})")
+    with c2: st.metric("Magnitude", f"{math.sqrt(rx**2+ry**2):.4f}")
+    with c3: st.metric("Angle", f"{math.degrees(math.atan2(ry, rx)):.2f}°")
+
+    st.latex(r"\vec{a} + \vec{b} = (" + f"{ax:.1f}" + r", " + f"{ay:.1f}" + r") + (" + f"{bx:.1f}" + r", " + f"{by:.1f}" + r") = (" + f"{rx:.1f}" + r", " + f"{ry:.1f}" + r")")
+
+# ── Dot Product ──────────────────────────────────────────
+elif topic == "Dot Product":
+    st.markdown("## Dot Product (Scalar Product)")
+    st.latex(r"\vec{a} \cdot \vec{b} = |\vec{a}||\vec{b}|\cos\theta = a_xb_x + a_yb_y")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Vector a**")
+        ax = st.slider("aₓ", -10.0, 10.0, 4.0, 0.1, key="dp_ax")
+        ay = st.slider("aᵧ", -10.0, 10.0, 1.0, 0.1, key="dp_ay")
+    with col2:
+        st.markdown("**Vector b**")
+        bx = st.slider("bₓ", -10.0, 10.0, 1.0, 0.1, key="dp_bx")
+        by = st.slider("bᵧ", -10.0, 10.0, 3.0, 0.1, key="dp_by")
+
+    dot = ax*bx + ay*by
+    mag_a = math.sqrt(ax**2 + ay**2)
+    mag_b = math.sqrt(bx**2 + by**2)
+    cos_theta = dot / (mag_a * mag_b) if mag_a > 0 and mag_b > 0 else 0
+    theta = math.degrees(math.acos(max(-1, min(1, cos_theta))))
+
+    fig = go.Figure()
+    # Vector a
+    fig.add_trace(go.Scatter(
+        x=[0, ax], y=[0, ay], mode="lines+markers",
+        line=dict(color="#6366f1", width=3),
+        marker=dict(size=[0, 8], color="#6366f1"),
+        name=f"a = ({ax:.1f}, {ay:.1f})",
+    ))
+    # Vector b
+    fig.add_trace(go.Scatter(
+        x=[0, bx], y=[0, by], mode="lines+markers",
+        line=dict(color="#10b981", width=3),
+        marker=dict(size=[0, 8], color="#10b981"),
+        name=f"b = ({bx:.1f}, {by:.1f})",
+    ))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dash"))
+    lim = max(abs(ax), abs(ay), abs(bx), abs(by), 5) + 1
+    fig.update_layout(
+        height=450,
+        xaxis=dict(range=[-lim, lim], scaleanchor="y", title="x"),
+        yaxis=dict(range=[-lim, lim], title="y"),
+        margin=dict(l=20, r=20, t=20, b=20),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: st.metric("a · b", f"{dot:.3f}")
+    with c2: st.metric("|a|", f"{mag_a:.3f}")
+    with c3: st.metric("|b|", f"{mag_b:.3f}")
+    with c4: st.metric("θ (angle)", f"{theta:.2f}°")
+
+    st.markdown(
+        f'<div class="result-box">'
+        f'a · b = {ax:.1f}×{bx:.1f} + {ay:.1f}×{by:.1f} = <strong>{dot:.3f}</strong><br>'
+        f'cos θ = {dot:.3f} / ({mag_a:.3f}×{mag_b:.3f}) = {cos_theta:.4f} → θ = {theta:.2f}°'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
 # ── Unit Circle ──────────────────────────────────────────
 elif topic == "Unit Circle":
