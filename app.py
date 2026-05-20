@@ -1956,13 +1956,19 @@ elif topic == "3D Geometry":
 # ================================================================
 elif topic == "Reflection":
     st.markdown("## Reflection")
-    st.latex(r"(x, y) \to (x, -y) \quad\text{(x-axis)}\qquad (x, y) \to (-x, y) \quad\text{(y-axis)}")
-    st.latex(r"(x, y) \to (y, x) \quad\text{(y=x)}\qquad (x, y) \to (-y, -x) \quad\text{(y=-x)}")
+    st.latex(r"x\text{-axis: } (x,y)\to(x,-y)\quad y\text{-axis: } (x,y)\to(-x,y)")
+    st.latex(r"y=x: (x,y)\to(y,x)\quad y=-x: (x,y)\to(-y,-x)")
+    st.latex(r"x=a: (x,y)\to(2a-x,y)\quad y=b: (x,y)\to(x,2b-y)")
 
     target = st.radio("Target", ["Point", "Linear Function", "Quadratic Function"], horizontal=True, key="ref_target")
-    axis = st.selectbox("Axis", ["x-axis (y → -y)", "y-axis (x → -x)", "y = x", "y = -x"], key="ref_axis")
+    axis = st.selectbox("Axis", ["x-axis (y → -y)", "y-axis (x → -x)", "y = x", "y = -x", "x = a (vertical)", "y = b (horizontal)"], key="ref_axis")
 
-    ax_map = {"x-axis (y → -y)": (1, -1), "y-axis (x → -x)": (-1, 1), "y = x": None, "y = -x": None}
+    a_val = b_val = 0
+    if axis == "x = a (vertical)":
+        a_val = st.slider("a", -8.0, 8.0, 2.0, 0.1, key="ref_a_val")
+    elif axis == "y = b (horizontal)":
+        b_val = st.slider("b", -8.0, 8.0, 2.0, 0.1, key="ref_b_val")
+
     fig = go.Figure()
     colors = {"original": "#6366f1", "transformed": "#ef4444"}
 
@@ -1972,7 +1978,9 @@ elif topic == "Reflection":
         if axis == "x-axis (y → -y)": rx, ry = px, -py
         elif axis == "y-axis (x → -x)": rx, ry = -px, py
         elif axis == "y = x": rx, ry = py, px
-        else: rx, ry = -py, -px
+        elif axis == "y = -x": rx, ry = -py, -px
+        elif axis == "x = a (vertical)": rx, ry = 2*a_val - px, py
+        else: rx, ry = px, 2*b_val - py
         fig.add_trace(go.Scatter(x=[px], y=[py], mode="markers", marker=dict(size=12, color=colors["original"]), name=f"P({px:.1f},{py:.1f})"))
         fig.add_trace(go.Scatter(x=[rx], y=[ry], mode="markers", marker=dict(size=12, color=colors["transformed"], symbol="x"), name=f"P'({rx:.1f},{ry:.1f})"))
         fig.add_trace(go.Scatter(x=[px, rx], y=[py, ry], mode="lines", line=dict(color="#f59e0b", width=1, dash="dot"), showlegend=False))
@@ -1980,37 +1988,45 @@ elif topic == "Reflection":
     x = np.linspace(-10, 10, 400)
     if target == "Linear Function":
         m = st.slider("Slope m", -5.0, 5.0, 1.0, 0.1, key="ref_m")
-        c = st.slider("Intercept c", -10.0, 10.0, 1.0, 0.1, key="ref_c")
-        y_orig = m * x + c
-        if axis == "x-axis (y → -y)": y_trans = -m * x - c
-        elif axis == "y-axis (x → -x)": y_trans = -m * x + c
-        elif axis == "y = x": y_trans = (x - c) / m if abs(m) > 0.01 else np.full_like(x, np.nan)
-        else: y_trans = (-x - c) / m if abs(m) > 0.01 else np.full_like(x, np.nan)
-        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color=colors["original"], width=2), name=f"y={{{m}}}x+{{{c}}}"))
+        c_int = st.slider("Intercept c", -10.0, 10.0, 1.0, 0.1, key="ref_c")
+        y_orig = m * x + c_int
+        if axis == "x-axis (y → -y)": y_trans = -m * x - c_int
+        elif axis == "y-axis (x → -x)": y_trans = -m * x + c_int
+        elif axis == "y = x": y_trans = (x - c_int) / m if abs(m) > 0.01 else np.full_like(x, np.nan)
+        elif axis == "y = -x": y_trans = (-x - c_int) / m if abs(m) > 0.01 else np.full_like(x, np.nan)
+        elif axis == "x = a (vertical)": y_trans = -m * x + 2*m*a_val + c_int
+        else: y_trans = m * x + 2*b_val - c_int
+        fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color=colors["original"], width=2), name=f"y={{{m}}}x+{{{c_int}}}"))
         fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color=colors["transformed"], width=2, dash="dash"), name="Reflected"))
 
     if target == "Quadratic Function":
-        a = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="ref_a")
-        b = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="ref_b")
-        c = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="ref_c")
-        y_orig = a * x**2 + b * x + c
-        if axis == "x-axis (y → -y)": y_trans = -a * x**2 - b * x - c
-        elif axis == "y-axis (x → -x)": y_trans = a * x**2 - b * x + c
-        elif axis == "y = x":
-            # Reflection about y=x: swap x and y → need to solve x = ay²+by+c for y
-            y_trans = np.full_like(x, np.nan)
-        else:
-            y_trans = np.full_like(x, np.nan)
+        a_q = st.slider("a", -5.0, 5.0, 1.0, 0.1, key="ref_a")
+        b_q = st.slider("b", -5.0, 5.0, 0.0, 0.1, key="ref_b")
+        c_q = st.slider("c", -10.0, 10.0, -2.0, 0.1, key="ref_c")
+        y_orig = a_q * x**2 + b_q * x + c_q
+        if axis == "x-axis (y → -y)": y_trans = -a_q * x**2 - b_q * x - c_q
+        elif axis == "y-axis (x → -x)": y_trans = a_q * x**2 - b_q * x + c_q
+        elif axis == "x = a (vertical)": y_trans = a_q * (2*a_val - x)**2 + b_q * (2*a_val - x) + c_q
+        elif axis == "y = b (horizontal)": y_trans = 2*b_val - a_q * x**2 - b_q * x - c_q
+        else: y_trans = np.full_like(x, np.nan)
         fig.add_trace(go.Scatter(x=x, y=y_orig, mode="lines", line=dict(color=colors["original"], width=2), name="Original"))
         fig.add_trace(go.Scatter(x=x, y=y_trans, mode="lines", line=dict(color=colors["transformed"], width=2, dash="dash"), name="Reflected"))
 
-    if axis in ("y = x", "y = -x"):
-        fig.add_trace(go.Scatter(x=[-10, 10], y=[-10 if axis=="y = x" else 10, 10 if axis=="y = x" else -10], mode="lines", line=dict(color="#555", width=1, dash="dot"), name=axis))
+    # Draw mirror line
+    if axis == "y = x":
+        fig.add_trace(go.Scatter(x=[-10, 10], y=[-10, 10], mode="lines", line=dict(color="#555", width=1, dash="dot"), name="y=x"))
+    elif axis == "y = -x":
+        fig.add_trace(go.Scatter(x=[-10, 10], y=[10, -10], mode="lines", line=dict(color="#555", width=1, dash="dot"), name="y=-x"))
+    elif axis == "x = a (vertical)":
+        fig.add_vline(x=a_val, line=dict(color="#555", width=1, dash="dot"), annotation_text=f"x={a_val}", annotation_position="top")
+    elif axis == "y = b (horizontal)":
+        fig.add_hline(y=b_val, line=dict(color="#555", width=1, dash="dot"), annotation_text=f"y={b_val}", annotation_position="right")
 
     fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
     fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
     fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), xaxis=dict(range=[-10,10], scaleanchor="y"), yaxis=dict(range=[-10,10]), hovermode="x")
     st.plotly_chart(fig, use_container_width=True)
+
 
 # ── Translation ──────────────────────────────────────────
 elif topic == "Translation":
