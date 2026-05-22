@@ -797,12 +797,16 @@ elif topic == "Ellipse":
 # ── Trigonometry ──────────────────────────────────────────
 elif topic == "Trigonometry Explorer":
     st.markdown("## Interactive Trig Functions")
-    st.latex(r"f(x) = A\sin(bx + c) + d")
     func = st.selectbox("Function", ["sin(x)", "cos(x)", "tan(x)", "sec(x)", "cosec(x)", "cot(x)", "sin(x) & cos(x)", "sec(x) & cosec(x)"])
+    if "&" in func:
+        fn_label = func.replace("(x)", "")
+    else:
+        fn_label = func.replace("(x)", "")
+    st.latex(rf"f(x) = A\,{fn_label}(bx + c) + d")
     col_a, col_b, col_c, col_d = st.columns(4)
-    with col_a: amp = st.slider("A (amplitude)", 0.1, 5.0, 1.0, 0.1)
+    with col_a: amp = st.slider("A (amplitude)", -5.0, 5.0, 1.0, 0.1)
     with col_b: freq = st.slider("b (frequency)", 0.1, 5.0, 1.0, 0.1)
-    with col_c: phase = st.slider("c (phase shift)", 0.0, 6.28, 0.0, 0.01)
+    with col_c: phase = st.slider("c (phase shift)", -6.28, 6.28, 0.0, 0.01)
     with col_d: vert = st.slider("d (vertical shift)", -5.0, 5.0, 0.0, 0.1)
 
     x = np.linspace(-2*np.pi, 2*np.pi, 600)
@@ -811,8 +815,10 @@ elif topic == "Trigonometry Explorer":
 
     def add_fn(fn_name, y_fn, color, dash="solid"):
         y = amp * y_fn(freq * x + phase) + vert
+        phase_str = f"{phase:+.2f}"
+        vert_str = f" + {vert:.1f}" if vert > 0.01 else f" - {abs(vert):.1f}" if vert < -0.01 else ""
         fig.add_trace(go.Scatter(x=x, y=y, mode="lines",
-                                  name=f"{amp}{fn_name}({freq}x+{phase:.2f}){'' if abs(vert)<0.01 else f'+{vert:.1f}'}",
+                                  name=f"{amp}{fn_name}({freq}x{phase_str}){vert_str}",
                                   line=dict(color=color, width=2, dash=dash)))
 
     def add_asymptotes(where_cos_zero):
@@ -884,7 +890,7 @@ elif topic == "Trigonometry Explorer":
         add_fn("sin", np.sin, "#6366f1")
         add_fn("cos", np.cos, "#10b981")
 
-    y_max = max(5.0, amp * 1.3 + abs(vert))
+    y_max = max(5.0, abs(amp) * 1.3 + abs(vert))
     fig.add_hline(y=vert, line=dict(color="#888", width=1, dash="dot"),
                   annotation_text=f"d={vert:.1f}" if abs(vert) > 0.1 else None)
     fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
