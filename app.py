@@ -602,7 +602,6 @@ elif topic == "Circle Equation":
     # Properties
     diameter = 2 * r
     circumference = 2 * math.pi * r
-    area = math.pi * r**2
 
     fig = go.Figure()
     # Circle
@@ -642,8 +641,7 @@ elif topic == "Circle Equation":
         f'<strong>Center:</strong> ({h:.2f}, {k:.2f}) &nbsp;|&nbsp; '
         f'<strong>Radius:</strong> {r:.2f}<br>'
         f'<strong>Diameter:</strong> {diameter:.2f} &nbsp;|&nbsp; '
-        f'<strong>Circumference:</strong> {circumference:.4f} &nbsp;|&nbsp; '
-        f'<strong>Area:</strong> {area:.4f}<br><br>'
+        f'<strong>Circumference:</strong> {circumference:.4f}<br><br>'
         f'<strong>Point P:</strong> ({x1:.2f}, {y1:.2f})<br>'
         f'<strong>Tangent eq:</strong> '
         f'({A_tan:.2f})(x - {h:.2f}) + ({B_tan:.2f})(y - {k:.2f}) = {r**2:.2f}'
@@ -658,7 +656,7 @@ elif topic == "Circle Equation":
 elif topic == "Ellipse":
     st.markdown("## Ellipse")
     st.markdown("Standard form $\\dfrac{(x-h)^2}{a^2} + \\dfrac{(y-k)^2}{b^2} = 1$")
-    st.latex(r"rac{(x-h)^2}{a^2} + rac{(y-k)^2}{b^2} = 1")
+    st.latex(r"\frac{(x-h)^2}{a^2} + \frac{(y-k)^2}{b^2} = 1")
 
     col1, col2 = st.columns([2, 2])
     with col1:
@@ -722,9 +720,6 @@ elif topic == "Ellipse":
         x_tan = np.full(200, x1)
         y_tan = np.linspace(k - a_major - 2, k + a_major + 2, 200)
 
-    # Area
-    area = math.pi * a_major * b_minor
-
     fig = go.Figure()
     # Ellipse
     fig.add_trace(go.Scatter(x=x_e, y=y_e, mode="lines",
@@ -780,8 +775,7 @@ elif topic == "Ellipse":
         f'<strong>a (semi-major):</strong> {a_major:.2f} &nbsp;|&nbsp; '
         f'<strong>b (semi-minor):</strong> {b_minor:.2f} &nbsp;|&nbsp; '
         f'<strong>c:</strong> {c_dist:.4f}<br>'
-        f'<strong>Eccentricity e:</strong> {eccentricity:.4f} &nbsp;|&nbsp; '
-        f'<strong>Area:</strong> πab = {area:.4f}<br><br>'
+        f'<strong>Eccentricity e:</strong> {eccentricity:.4f}<br>'
         f'<strong>Vertices:</strong> {vert_str}<br>'
         f'<strong>Co-vertices:</strong> {covt_str}<br>'
         f'<strong>Foci:</strong> {foci_str}<br><br>'
@@ -792,9 +786,13 @@ elif topic == "Ellipse":
         unsafe_allow_html=True,
     )
 
-    st.markdown("### Tangent to Ellipse")
-    st.markdown("At point $P(x_1, y_1)$ on the ellipse:")
-    st.latex(r"rac{(x_1-h)(x-h)}{a^2} + rac{(y_1-k)(y-k)}{b^2} = 1")
+    st.markdown("### Formulas")
+    st.markdown("**Focal distance:** $c^2 = a^2 - b^2$")
+    st.latex(rf"c = \sqrt{{{a_major:.2f}^2 - {b_minor:.2f}^2}} = {c_dist:.4f}")
+    st.markdown(r"**Eccentricity:** $e = \dfrac{c}{a}$")
+    st.latex(rf"e = \frac{{{c_dist:.4f}}}{{{a_major:.2f}}} = {eccentricity:.4f}")
+    st.markdown("**Tangent at point $P(x_1, y_1)$:**")
+    st.latex(r"\frac{(x_1-h)(x-h)}{a^2} + \frac{(y_1-k)(y-k)}{b^2} = 1")
 
 # ── Trigonometry ──────────────────────────────────────────
 elif topic == "Trigonometry Explorer":
