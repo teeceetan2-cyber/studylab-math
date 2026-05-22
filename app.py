@@ -1033,10 +1033,17 @@ elif topic == "Derivative Visualizer":
 
 # ── Integral ─────────────────────────────────────────────
 elif topic == "Integral Area":
-    st.markdown("## Definite Integral — Area Under Curve")
-    st.latex(r"\int_a^b f(x)\,dx")
+    st.markdown("## Definite Integral — Area & Volume")
+
+    calc_mode = st.radio("Mode", ["Area under curve", "Volume around x-axis",
+                                   "Volume around y-axis"], horizontal=True)
+
+    st.latex(r"\int_a^b f(x)\,dx" if calc_mode == "Area under curve" else
+             r"V_x = \pi\int_a^b [f(x)]^2\,dx" if calc_mode == "Volume around x-axis" else
+             r"V_y = 2\pi\int_a^b x\,f(x)\,dx")
+
     fn_choice = st.selectbox("Function", ["x²", "x³", "sin(x)", "cos(x)", "ax²+bx+c", "ax³+bx²+cx+d"], key="int_fn")
-    a_i, b_i = st.slider("Integration range [a, b]", -5.0, 5.0, (0.0, 2.0), 0.1)
+    a_i, b_i = st.slider("Range [a, b]", -5.0, 5.0, (0.0, 2.0), 0.1)
 
     if fn_choice == "ax²+bx+c" or fn_choice == "ax³+bx²+cx+d":
         col1, col2, col3, col4 = st.columns(4)
@@ -1059,27 +1066,130 @@ elif topic == "Integral Area":
         f = i_a * x**3 + i_b * x**2 + i_c * x + i_d
         label = f"{i_a}x³+{i_b}x²+{i_c}x+{i_d}"
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=x, y=f, mode="lines", name=label, line=dict(color="#6366f1", width=2)))
-    mask = (x >= a_i) & (x <= b_i)
-    fig.add_trace(go.Scatter(x=x[mask], y=f[mask], mode="lines", fill="tozeroy",
-                              name=f"Area [{a_i}, {b_i}]",
-                              line=dict(color="rgba(99,102,241,0.3)", width=0),
-                              fillcolor="rgba(99,102,241,0.2)"))
-    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
-    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), hovermode="x")
-    st.plotly_chart(fig, use_container_width=True)
+    if calc_mode == "Area under curve":
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x, y=f, mode="lines", name=label,
+                                  line=dict(color="#6366f1", width=2)))
+        mask = (x >= a_i) & (x <= b_i)
+        fig.add_trace(go.Scatter(x=x[mask], y=f[mask], mode="lines", fill="tozeroy",
+                                  name=f"Area [{a_i}, {b_i}]",
+                                  line=dict(color="rgba(99,102,241,0.3)", width=0),
+                                  fillcolor="rgba(99,102,241,0.2)"))
+        fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
+        fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), hovermode="x")
+        st.plotly_chart(fig, use_container_width=True)
 
-    dx = 0.001
-    xs = np.arange(a_i, b_i, dx)
-    if fn_choice == "x²": approx = np.sum(xs**2) * dx
-    elif fn_choice == "x³": approx = np.sum(xs**3) * dx
-    elif fn_choice == "sin(x)": approx = np.sum(np.sin(xs)) * dx
-    elif fn_choice == "cos(x)": approx = np.sum(np.cos(xs)) * dx
-    elif fn_choice == "ax²+bx+c": approx = np.sum(i_a * xs**2 + i_b * xs + i_c) * dx
-    elif fn_choice == "ax³+bx²+cx+d": approx = np.sum(i_a * xs**3 + i_b * xs**2 + i_c * xs + i_d) * dx
+        dx = 0.001
+        xs = np.arange(a_i, b_i, dx)
+        if fn_choice == "x²": approx = np.sum(xs**2) * dx
+        elif fn_choice == "x³": approx = np.sum(xs**3) * dx
+        elif fn_choice == "sin(x)": approx = np.sum(np.sin(xs)) * dx
+        elif fn_choice == "cos(x)": approx = np.sum(np.cos(xs)) * dx
+        elif fn_choice == "ax²+bx+c": approx = np.sum(i_a * xs**2 + i_b * xs + i_c) * dx
+        elif fn_choice == "ax³+bx²+cx+d": approx = np.sum(i_a * xs**3 + i_b * xs**2 + i_c * xs + i_d) * dx
 
-    st.info(f"∫_{a_i}^{b_i} {label} dx ≈ {approx:.6f}")
+        st.info(f"∫_{{a_i}}^{{{b_i}}} {{{label}}} dx ≈ {approx:.6f}")
+
+    elif calc_mode == "Volume around x-axis":
+        st.markdown("Rotate $f(x)$ around the **x-axis** — a solid of revolution.")
+
+        # Only use non-negative portion of f(x) for rotation
+        mask_full = (x >= a_i) & (x <= b_i)
+        x_span = x[mask_full]
+        f_span = f[mask_full]
+
+        # Compute volume: V = π ∫ f(x)² dx
+        dx = 0.001
+        xs = np.arange(max(a_i, 0), max(b_i, 0.01), dx)
+        if fn_choice == "x²": fs = xs**2
+        elif fn_choice == "x³": fs = xs**3
+        elif fn_choice == "sin(x)": fs = np.sin(xs)
+        elif fn_choice == "cos(x)": fs = np.cos(xs)
+        elif fn_choice == "ax²+bx+c": fs = i_a * xs**2 + i_b * xs + i_c
+        elif fn_choice == "ax³+bx²+cx+d": fs = i_a * xs**3 + i_b * xs**2 + i_c * xs + i_d
+
+        volume = math.pi * np.sum(fs**2) * dx
+
+        # Build 3D surface: rotate f(x) around x-axis
+        theta = np.linspace(0, 2 * np.pi, 48)
+        X_3d, Theta = np.meshgrid(x_span, theta)
+        # Evaluate f at each x
+        if fn_choice == "x²": F = x_span**2
+        elif fn_choice == "x³": F = x_span**3
+        elif fn_choice == "sin(x)": F = np.sin(x_span)
+        elif fn_choice == "cos(x)": F = np.cos(x_span)
+        elif fn_choice == "ax²+bx+c": F = i_a * x_span**2 + i_b * x_span + i_c
+        elif fn_choice == "ax³+bx²+cx+d": F = i_a * x_span**3 + i_b * x_span**2 + i_c * x_span + i_d
+
+        Y_3d = F * np.cos(Theta)
+        Z_3d = F * np.sin(Theta)
+
+        fig = go.Figure(data=[go.Surface(x=X_3d, y=Y_3d, z=Z_3d,
+                                          colorscale="Viridis", opacity=0.85,
+                                          showscale=False)])
+        # Trace the original curve on the surface
+        fig.add_trace(go.Scatter3d(x=x_span, y=F, z=np.zeros_like(F),
+                                    mode="lines",
+                                    line=dict(color="#ef4444", width=4),
+                                    name=f"f(x)={label}"))
+        fig.update_layout(height=500,
+                          scene=dict(xaxis_title="x", yaxis_title="y", zaxis_title="z",
+                                     aspectmode="data"),
+                          margin=dict(l=0, r=0, t=20, b=0))
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.success(f"**V = π ∫ₐᵇ [f(x)]² dx ≈ {volume:.4f}** (cubic units)")
+
+    elif calc_mode == "Volume around y-axis":
+        st.markdown("Rotate $f(x)$ around the **y-axis** — using the shell method.")
+        st.latex(r"V_y = 2\pi\int_a^b x\,f(x)\,dx")
+
+        mask_full = (x >= a_i) & (x <= b_i)
+        x_span = x[mask_full]
+        f_span = f[mask_full]
+
+        # Compute volume using shell method: V = 2π ∫ x·f(x) dx
+        dx = 0.001
+        xs = np.arange(max(a_i, 0), max(b_i, 0.01), dx)
+        if fn_choice == "x²": fs = xs**2
+        elif fn_choice == "x³": fs = xs**3
+        elif fn_choice == "sin(x)": fs = np.sin(xs)
+        elif fn_choice == "cos(x)": fs = np.cos(xs)
+        elif fn_choice == "ax²+bx+c": fs = i_a * xs**2 + i_b * xs + i_c
+        elif fn_choice == "ax³+bx²+cx+d": fs = i_a * xs**3 + i_b * xs**2 + i_c * xs + i_d
+
+        volume = 2 * math.pi * np.sum(xs * fs) * dx
+
+        # Build 3D surface: rotate f(x) around y-axis
+        theta = np.linspace(0, 2 * np.pi, 48)
+        Theta, R = np.meshgrid(theta, x_span)
+        # Use x as radius from y-axis
+        if fn_choice == "x²": F_vals = x_span**2
+        elif fn_choice == "x³": F_vals = x_span**3
+        elif fn_choice == "sin(x)": F_vals = np.sin(x_span)
+        elif fn_choice == "cos(x)": F_vals = np.cos(x_span)
+        elif fn_choice == "ax²+bx+c": F_vals = i_a * x_span**2 + i_b * x_span + i_c
+        elif fn_choice == "ax³+bx²+cx+d": F_vals = i_a * x_span**3 + i_b * x_span**2 + i_c * x_span + i_d
+
+        X_3d = R * np.cos(Theta)
+        Z_3d = R * np.sin(Theta)
+        Y_3d = np.tile(F_vals, (48, 1)).T
+
+        fig = go.Figure(data=[go.Surface(x=X_3d, y=Y_3d, z=Z_3d,
+                                          colorscale="Plasma", opacity=0.85,
+                                          showscale=False)])
+        # Original curve in the yz-plane (x=0 becomes z=0)
+        fig.add_trace(go.Scatter3d(x=np.zeros_like(x_span), y=F_vals, z=x_span,
+                                    mode="lines",
+                                    line=dict(color="#ef4444", width=4),
+                                    name=f"f(x)={label}"))
+        fig.update_layout(height=500,
+                          scene=dict(xaxis_title="x", yaxis_title="y", zaxis_title="z",
+                                     aspectmode="data"),
+                          margin=dict(l=0, r=0, t=20, b=0))
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.success(f"**V = 2π ∫ₐᵇ x·f(x) dx ≈ {volume:.4f}** (cubic units)")
 
 # ── 2D Vector Explorer ──────────────────────────────────
 if topic == "2D Vector Explorer":
