@@ -797,18 +797,22 @@ elif topic == "Ellipse":
 # ── Trigonometry ──────────────────────────────────────────
 elif topic == "Trigonometry Explorer":
     st.markdown("## Interactive Trig Functions")
+    st.latex(r"f(x) = A\sin(bx + c) + d")
     func = st.selectbox("Function", ["sin(x)", "cos(x)", "tan(x)", "sec(x)", "cosec(x)", "cot(x)", "sin(x) & cos(x)", "sec(x) & cosec(x)"])
-    amp = st.slider("Amplitude", 0.1, 5.0, 1.0, 0.1)
-    freq = st.slider("Frequency", 0.1, 5.0, 1.0, 0.1)
-    phase = st.slider("Phase shift", 0.0, 6.28, 0.0, 0.01)
+    col_a, col_b, col_c, col_d = st.columns(4)
+    with col_a: amp = st.slider("A (amplitude)", 0.1, 5.0, 1.0, 0.1)
+    with col_b: freq = st.slider("b (frequency)", 0.1, 5.0, 1.0, 0.1)
+    with col_c: phase = st.slider("c (phase shift)", 0.0, 6.28, 0.0, 0.01)
+    with col_d: vert = st.slider("d (vertical shift)", -5.0, 5.0, 0.0, 0.1)
 
     x = np.linspace(-2*np.pi, 2*np.pi, 600)
     x_range = (-2*np.pi, 2*np.pi)
     fig = go.Figure()
 
     def add_fn(fn_name, y_fn, color, dash="solid"):
-        y = amp * y_fn(freq * x + phase)
-        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name=f"{amp}{fn_name}({freq}x+{phase:.2f})",
+        y = amp * y_fn(freq * x + phase) + vert
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines",
+                                  name=f"{amp}{fn_name}({freq}x+{phase:.2f}){'' if abs(vert)<0.01 else f'+{vert:.1f}'}",
                                   line=dict(color=color, width=2, dash=dash)))
 
     def add_asymptotes(where_cos_zero):
@@ -833,43 +837,43 @@ elif topic == "Trigonometry Explorer":
     elif func == "cos(x)":
         add_fn("cos", np.cos, "#10b981")
     elif func == "tan(x)":
-        y = amp * np.tan(freq * x + phase)
-        y = np.where(np.abs(y) > 10, np.nan, y)
-        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="tan(x)",
+        y = amp * np.tan(freq * x + phase) + vert
+        y = np.where(np.abs(y - vert) > 10, np.nan, y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name=f"tan(x){'' if abs(vert)<0.01 else f'+{vert:.1f}'}",
                                   line=dict(color="#f59e0b", width=2)))
         add_asymptotes(where_cos_zero=True)
     elif func == "sec(x)":
         cos_val = np.cos(freq * x + phase)
-        y = amp / cos_val
+        y = amp / cos_val + vert
         y = np.where(np.abs(cos_val) < 0.005, np.nan, y)
-        y = np.where(np.abs(y) > 10, np.nan, y)
-        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="sec(x)",
+        y = np.where(np.abs(y - vert) > 10, np.nan, y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name=f"sec(x){'' if abs(vert)<0.01 else f'+{vert:.1f}'}",
                                   line=dict(color="#a855f7", width=2)))
         add_asymptotes(where_cos_zero=True)
     elif func == "cosec(x)":
         sin_val = np.sin(freq * x + phase)
-        y = amp / sin_val
+        y = amp / sin_val + vert
         y = np.where(np.abs(sin_val) < 0.005, np.nan, y)
-        y = np.where(np.abs(y) > 10, np.nan, y)
-        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="cosec(x)",
+        y = np.where(np.abs(y - vert) > 10, np.nan, y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name=f"cosec(x){'' if abs(vert)<0.01 else f'+{vert:.1f}'}",
                                   line=dict(color="#ec4899", width=2)))
         add_asymptotes(where_cos_zero=False)
     elif func == "cot(x)":
         sin_val = np.sin(freq * x + phase)
         cos_val = np.cos(freq * x + phase)
-        y = amp * cos_val / sin_val
+        y = amp * cos_val / sin_val + vert
         y = np.where(np.abs(sin_val) < 0.005, np.nan, y)
-        y = np.where(np.abs(y) > 10, np.nan, y)
-        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="cot(x)",
+        y = np.where(np.abs(y - vert) > 10, np.nan, y)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name=f"cot(x){'' if abs(vert)<0.01 else f'+{vert:.1f}'}",
                                   line=dict(color="#06b6d4", width=2)))
         add_asymptotes(where_cos_zero=False)
     elif func == "sec(x) & cosec(x)":
         cos_val = np.cos(freq * x + phase)
         sin_val = np.sin(freq * x + phase)
-        y_sec = amp / cos_val
-        y_csc = amp / sin_val
-        y_sec = np.where((np.abs(cos_val) < 0.005) | (np.abs(y_sec) > 10), np.nan, y_sec)
-        y_csc = np.where((np.abs(sin_val) < 0.005) | (np.abs(y_csc) > 10), np.nan, y_csc)
+        y_sec = amp / cos_val + vert
+        y_csc = amp / sin_val + vert
+        y_sec = np.where((np.abs(cos_val) < 0.005) | (np.abs(y_sec - vert) > 10), np.nan, y_sec)
+        y_csc = np.where((np.abs(sin_val) < 0.005) | (np.abs(y_csc - vert) > 10), np.nan, y_csc)
         fig.add_trace(go.Scatter(x=x, y=y_sec, mode="lines", name="sec(x)",
                                   line=dict(color="#a855f7", width=2)))
         fig.add_trace(go.Scatter(x=x, y=y_csc, mode="lines", name="cosec(x)",
@@ -880,9 +884,12 @@ elif topic == "Trigonometry Explorer":
         add_fn("sin", np.sin, "#6366f1")
         add_fn("cos", np.cos, "#10b981")
 
+    y_max = max(5.0, amp * 1.3 + abs(vert))
+    fig.add_hline(y=vert, line=dict(color="#888", width=1, dash="dot"),
+                  annotation_text=f"d={vert:.1f}" if abs(vert) > 0.1 else None)
     fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dash"))
     fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
-                      yaxis_range=[-5, 5], hovermode="x")
+                      yaxis_range=[-y_max, y_max], hovermode="x")
     st.plotly_chart(fig, use_container_width=True)
 
 # ── Derivative ────────────────────────────────────────────
