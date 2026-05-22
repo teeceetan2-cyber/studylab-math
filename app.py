@@ -31,6 +31,7 @@ category = st.sidebar.selectbox("Category", [
 
 topic_map = {
     "🔢 Algebra": ["Linear Functions", "Quadratic Equation",
+                    "Circle Equation", "Ellipse",
                     "Exponential Functions", "Logarithmic Functions",
                     "Square Root Functions", "Rational Functions",
                     "Piecewise Functions",
@@ -553,6 +554,247 @@ if topic == "Quadratic Equation":
     fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
                       xaxis_title="x", yaxis_title="y", hovermode="x")
     st.plotly_chart(fig, use_container_width=True)
+
+# ── Circle Equation ──────────────────────────────────────
+elif topic == "Circle Equation":
+    st.markdown("## Circle Equation")
+    st.markdown("Standard form $(x-h)^2 + (y-k)^2 = r^2$")
+    st.latex(r"(x - h)^2 + (y - k)^2 = r^2")
+
+    col1, col2, col3 = st.columns([2, 2, 3])
+    with col1:
+        h = st.slider("h (center x)", -8.0, 8.0, 0.0, 0.1, key="cir_h")
+        k = st.slider("k (center y)", -8.0, 8.0, 0.0, 0.1, key="cir_k")
+        r = st.slider("r (radius)", 0.5, 8.0, 3.0, 0.1, key="cir_r")
+    with col2:
+        theta = st.slider("θ tangent point", 0.0, 360.0, 45.0, 1.0, key="cir_th")
+        st.markdown("**Derived values:**")
+        D = -2 * h
+        E = -2 * k
+        F = h**2 + k**2 - r**2
+        st.latex(rf"x^2 + y^2 + ({D:.2f})x + ({E:.2f})y + ({F:.2f}) = 0")
+
+    # Parametric circle
+    t = np.linspace(0, 2 * np.pi, 400)
+    x_c = h + r * np.cos(t)
+    y_c = k + r * np.sin(t)
+
+    # Tangent point
+    th_rad = math.radians(theta)
+    x1 = h + r * math.cos(th_rad)
+    y1 = k + r * math.sin(th_rad)
+
+    # Tangent line: (x1-h)(x-h) + (y1-k)(y-k) = r²
+    # Solve for y: y = (r² - (x1-h)(x-h)) / (y1-k) + k
+    A_tan = x1 - h
+    B_tan = y1 - k
+    if abs(B_tan) > 0.01:
+        # y = (r² - A_tan(x-h)) / B_tan + k
+        x_tan = np.linspace(h - r - 1.5, h + r + 1.5, 200)
+        y_tan = (r**2 - A_tan * (x_tan - h)) / B_tan + k
+        # Clip vertical tangents
+        y_tan = np.where(np.abs(y_tan - k) > 12, np.nan, y_tan)
+    else:
+        # Vertical tangent (top/bottom of circle)
+        x_tan = np.full(200, x1)
+        y_tan = np.linspace(k - r - 2, k + r + 2, 200)
+
+    # Properties
+    diameter = 2 * r
+    circumference = 2 * math.pi * r
+    area = math.pi * r**2
+
+    fig = go.Figure()
+    # Circle
+    fig.add_trace(go.Scatter(x=x_c, y=y_c, mode="lines",
+                              name=f"Circle (h={h}, k={k}, r={r})",
+                              line=dict(color="#6366f1", width=2)))
+    # Center
+    fig.add_trace(go.Scatter(x=[h], y=[k], mode="markers",
+                              marker=dict(size=8, color="#f59e0b", symbol="circle-open"),
+                              name=f"Center ({h:.1f}, {k:.1f})"))
+    # Radius line
+    fig.add_trace(go.Scatter(x=[h, x1], y=[k, y1], mode="lines",
+                              line=dict(color="#10b981", width=1.5, dash="dot"),
+                              name="Radius", showlegend=False))
+    # Tangent point
+    fig.add_trace(go.Scatter(x=[x1], y=[y1], mode="markers",
+                              marker=dict(size=10, color="#ef4444"),
+                              name=f"P ({x1:.2f}, {y1:.2f})"))
+    # Tangent line
+    fig.add_trace(go.Scatter(x=x_tan, y=y_tan, mode="lines",
+                              line=dict(color="#ef4444", width=2, dash="dash"),
+                              name=f"Tangent at θ={theta:.0f}°"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=450, margin=dict(l=20, r=20, t=20, b=20),
+                      xaxis=dict(range=[-10, 10], scaleanchor="y", constrain="domain"),
+                      yaxis=dict(range=[-10, 10]), hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Tangent formula
+    st.markdown("### Tangent to Circle")
+    st.markdown("At point $P(x_1, y_1)$ on the circle:")
+    st.latex(r"(x_1 - h)(x - h) + (y_1 - k)(y - k) = r^2")
+    st.markdown(
+        f'<div class="result-box">'
+        f'<strong>Center:</strong> ({h:.2f}, {k:.2f}) &nbsp;|&nbsp; '
+        f'<strong>Radius:</strong> {r:.2f}<br>'
+        f'<strong>Diameter:</strong> {diameter:.2f} &nbsp;|&nbsp; '
+        f'<strong>Circumference:</strong> {circumference:.4f} &nbsp;|&nbsp; '
+        f'<strong>Area:</strong> {area:.4f}<br><br>'
+        f'<strong>Point P:</strong> ({x1:.2f}, {y1:.2f})<br>'
+        f'<strong>Tangent eq:</strong> '
+        f'({A_tan:.2f})(x - {h:.2f}) + ({B_tan:.2f})(y - {k:.2f}) = {r**2:.2f}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("**Also:** Convert standard form to general $x^2 + y^2 + Dx + Ey + F = 0$")
+    st.latex(rf"D = -2h = {D:.2f}, \quad E = -2k = {E:.2f}, \quad F = h^2 + k^2 - r^2 = {F:.2f}")
+
+# ── Ellipse ───────────────────────────────────────────────
+elif topic == "Ellipse":
+    st.markdown("## Ellipse")
+    st.markdown("Standard form $\\dfrac{(x-h)^2}{a^2} + \\dfrac{(y-k)^2}{b^2} = 1$")
+    st.latex(r"rac{(x-h)^2}{a^2} + rac{(y-k)^2}{b^2} = 1")
+
+    col1, col2 = st.columns([2, 2])
+    with col1:
+        h = st.slider("h (center x)", -8.0, 8.0, 0.0, 0.1, key="ell_h")
+        k = st.slider("k (center y)", -8.0, 8.0, 0.0, 0.1, key="ell_k")
+        a = st.slider("a (semi-major axis)", 0.5, 8.0, 4.0, 0.1, key="ell_a")
+        b = st.slider("b (semi-minor axis)", 0.5, 8.0, 2.0, 0.1, key="ell_b")
+    with col2:
+        orientation = st.radio("Major axis", ["Horizontal", "Vertical"], horizontal=True)
+        theta = st.slider("θ tangent point", 0.0, 360.0, 30.0, 1.0, key="ell_th")
+        st.markdown("")
+        st.caption("Note: a ≥ b for horizontal, a < b for vertical")
+
+    # Determine effective a_major, b_minor
+    if orientation == "Horizontal":
+        a_major = max(a, b)
+        b_minor = min(a, b)
+    else:
+        a_major = max(a, b)
+        b_minor = min(a, b)
+
+    # Compute c (focal distance), eccentricity
+    c_dist = math.sqrt(a_major**2 - b_minor**2) if a_major > b_minor else 0.0
+    eccentricity = c_dist / a_major if a_major > 0 else 0
+
+    # Parametric ellipse
+    t = np.linspace(0, 2 * np.pi, 500)
+    if orientation == "Horizontal":
+        x_e = h + a_major * np.cos(t)
+        y_e = k + b_minor * np.sin(t)
+        # Foci positions
+        foci = [(h - c_dist, k), (h + c_dist, k)]
+        vertices = [(h - a_major, k), (h + a_major, k)]
+        covertices = [(h, k - b_minor), (h, k + b_minor)]
+    else:
+        x_e = h + b_minor * np.cos(t)
+        y_e = k + a_major * np.sin(t)
+        foci = [(h, k - c_dist), (h, k + c_dist)]
+        vertices = [(h, k - a_major), (h, k + a_major)]
+        covertices = [(h - b_minor, k), (h + b_minor, k)]
+
+    # Tangent point
+    th_rad = math.radians(theta)
+    if orientation == "Horizontal":
+        x1 = h + a_major * math.cos(th_rad)
+        y1 = k + b_minor * math.sin(th_rad)
+    else:
+        x1 = h + b_minor * math.cos(th_rad)
+        y1 = k + a_major * math.sin(th_rad)
+
+    # Tangent: (x1-h)(x-h)/a² + (y1-k)(y-k)/b² = 1
+    A_tan = (x1 - h) / (a_major**2)
+    B_tan = (y1 - k) / (b_minor**2)
+    # A_tan(x - h) + B_tan(y - k) = 1
+    # => y = (1 - A_tan(x-h)) / B_tan + k
+    if abs(B_tan) > 0.01:
+        x_tan = np.linspace(h - a_major - 1.5, h + a_major + 1.5, 200)
+        y_tan = (1 - A_tan * (x_tan - h)) / B_tan + k
+        y_tan = np.where(np.abs(y_tan - k) > 12, np.nan, y_tan)
+    else:
+        x_tan = np.full(200, x1)
+        y_tan = np.linspace(k - a_major - 2, k + a_major + 2, 200)
+
+    # Area
+    area = math.pi * a_major * b_minor
+
+    fig = go.Figure()
+    # Ellipse
+    fig.add_trace(go.Scatter(x=x_e, y=y_e, mode="lines",
+                              name=f"Ellipse",
+                              line=dict(color="#6366f1", width=2)))
+    # Center
+    fig.add_trace(go.Scatter(x=[h], y=[k], mode="markers",
+                              marker=dict(size=8, color="#f59e0b", symbol="circle-open"),
+                              name=f"Center ({h:.1f}, {k:.1f})"))
+    # Vertices
+    fig.add_trace(go.Scatter(x=[v[0] for v in vertices], y=[v[1] for v in vertices],
+                              mode="markers",
+                              marker=dict(size=8, color="#10b981", symbol="diamond"),
+                              name=f"Vertices"))
+    # Co-vertices
+    fig.add_trace(go.Scatter(x=[cv[0] for cv in covertices], y=[cv[1] for cv in covertices],
+                              mode="markers",
+                              marker=dict(size=7, color="#22d3ee", symbol="square"),
+                              name=f"Co-vertices"))
+    # Foci
+    if c_dist > 0.01:
+        fig.add_trace(go.Scatter(x=[f[0] for f in foci], y=[f[1] for f in foci],
+                                  mode="markers",
+                                  marker=dict(size=10, color="#ef4444", symbol="x"),
+                                  name=f"Foci"))
+    # Tangent point
+    fig.add_trace(go.Scatter(x=[x1], y=[y1], mode="markers",
+                              marker=dict(size=10, color="#f97316"),
+                              name=f"P ({x1:.2f}, {y1:.2f})"))
+    # Tangent line
+    fig.add_trace(go.Scatter(x=x_tan, y=y_tan, mode="lines",
+                              line=dict(color="#ef4444", width=2, dash="dash"),
+                              name=f"Tangent at θ={theta:.0f}°"))
+
+    fig.add_hline(y=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
+    fig.update_layout(height=450, margin=dict(l=20, r=20, t=20, b=20),
+                      xaxis=dict(range=[-10, 10], scaleanchor="y", constrain="domain"),
+                      yaxis=dict(range=[-10, 10]), hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Properties & Tangent
+    st.markdown("### Ellipse Properties")
+
+    foci_str = ", ".join([f"({f[0]:.2f}, {f[1]:.2f})" for f in foci])
+    vert_str = ", ".join([f"({v[0]:.2f}, {v[1]:.2f})" for v in vertices])
+    covt_str = ", ".join([f"({cv[0]:.2f}, {cv[1]:.2f})" for cv in covertices])
+
+    st.markdown(
+        f'<div class="result-box">'
+        f'<strong>Center:</strong> ({h:.2f}, {k:.2f}) &nbsp;|&nbsp; '
+        f'<strong>Orientation:</strong> {orientation}<br>'
+        f'<strong>a (semi-major):</strong> {a_major:.2f} &nbsp;|&nbsp; '
+        f'<strong>b (semi-minor):</strong> {b_minor:.2f} &nbsp;|&nbsp; '
+        f'<strong>c:</strong> {c_dist:.4f}<br>'
+        f'<strong>Eccentricity e:</strong> {eccentricity:.4f} &nbsp;|&nbsp; '
+        f'<strong>Area:</strong> πab = {area:.4f}<br><br>'
+        f'<strong>Vertices:</strong> {vert_str}<br>'
+        f'<strong>Co-vertices:</strong> {covt_str}<br>'
+        f'<strong>Foci:</strong> {foci_str}<br><br>'
+        f'<strong>Point P:</strong> ({x1:.2f}, {y1:.2f})<br>'
+        f'<strong>Tangent eq:</strong> '
+        f'({A_tan:.4f})(x - {h:.2f}) + ({B_tan:.4f})(y - {k:.2f}) = 1'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Tangent to Ellipse")
+    st.markdown("At point $P(x_1, y_1)$ on the ellipse:")
+    st.latex(r"rac{(x_1-h)(x-h)}{a^2} + rac{(y_1-k)(y-k)}{b^2} = 1")
 
 # ── Trigonometry ──────────────────────────────────────────
 elif topic == "Trigonometry Explorer":
