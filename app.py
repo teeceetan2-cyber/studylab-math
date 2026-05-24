@@ -3088,15 +3088,43 @@ elif topic == "Frequency Distribution":
                 st.error("Invalid boundaries. Use numbers separated by commas.")
                 bin_edges = [min_d, max_d]
 
+        # ── Inclusive vs Exclusive ──
+        interval_type = st.radio("Interval type",
+            ["Exclusive (<)", "Inclusive (≤)"], horizontal=True,
+            help="Exclusive: upper bound excluded (50 ≤ x < 60). Inclusive: both ends included (50 ≤ x ≤ 60).")
+
         # ── Frequency Table ──
         counts, edges = np.histogram(data, bins=bin_edges)
+        is_exclusive = "Exclusive" in interval_type
+
         freq_rows = []
         for i in range(len(counts)):
             low = edges[i]
             high = edges[i+1]
             midpoint = (low + high) / 2
+
+            # Determine if data is likely discrete (all integers)
+            is_discrete = all(float(x).is_integer() for x in data)
+
+            if is_exclusive:
+                # Class interval: low — <high  (e.g., 50 — <60)
+                # Actual class boundaries = low, high
+                class_label = f"{low:.0f} — <{high:.0f}" if is_discrete else f"{low:.2f} — <{high:.2f}"
+                bound_label = f"{low:.1f} — {high:.1f}" if is_discrete else f"{low:.2f} — {high:.2f}"
+            else:
+                # Class interval: low — high  (e.g., 50 — 59)
+                # For discrete data, upper limit = high - 1, actual boundary at ±0.5
+                if is_discrete:
+                    upper_limit = high - 1
+                    class_label = f"{low:.0f} — {upper_limit:.0f}"
+                    bound_label = f"{low-0.5:.1f} — {high-0.5:.1f}"
+                else:
+                    class_label = f"{low:.2f} — {high:.2f}"
+                    bound_label = f"{low:.2f} — {high:.2f}"
+
             freq_rows.append({
-                "Class": f"{low:.2f} — {high:.2f}",
+                "Class Interval": class_label,
+                "Class Boundaries": bound_label,
                 "Midpoint": f"{midpoint:.2f}",
                 "Frequency": counts[i],
                 "Rel. Freq": f"{counts[i]/len(data)*100:.1f}%",
