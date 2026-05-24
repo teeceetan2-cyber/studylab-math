@@ -3101,7 +3101,6 @@ elif topic == "Frequency Distribution":
         for i in range(len(counts)):
             low = edges[i]
             high = edges[i+1]
-            midpoint = (low + high) / 2
 
             # Determine if data is likely discrete (all integers)
             is_discrete = all(float(x).is_integer() for x in data)
@@ -3109,18 +3108,23 @@ elif topic == "Frequency Distribution":
             if is_exclusive:
                 # Class interval: low — <high  (e.g., 50 — <60)
                 # Actual class boundaries = low, high
+                b_low, b_high = low, high
+                midpoint = (b_low + b_high) / 2
                 class_label = f"{low:.0f} — <{high:.0f}" if is_discrete else f"{low:.2f} — <{high:.2f}"
-                bound_label = f"{low:.1f} — {high:.1f}" if is_discrete else f"{low:.2f} — {high:.2f}"
+                bound_label = f"{b_low:.1f} — {b_high:.1f}" if is_discrete else f"{b_low:.2f} — {b_high:.2f}"
             else:
                 # Class interval: low — high  (e.g., 50 — 59)
                 # For discrete data, upper limit = high - 1, actual boundary at ±0.5
                 if is_discrete:
                     upper_limit = high - 1
+                    b_low, b_high = low - 0.5, high - 0.5
                     class_label = f"{low:.0f} — {upper_limit:.0f}"
-                    bound_label = f"{low-0.5:.1f} — {high-0.5:.1f}"
+                    bound_label = f"{b_low:.1f} — {b_high:.1f}"
                 else:
+                    b_low, b_high = low, high
                     class_label = f"{low:.2f} — {high:.2f}"
-                    bound_label = f"{low:.2f} — {high:.2f}"
+                    bound_label = f"{b_low:.2f} — {b_high:.2f}"
+                midpoint = (b_low + b_high) / 2
 
             freq_rows.append({
                 "Class Interval": class_label,
