@@ -51,10 +51,76 @@ topic_map = {
     "📊 Statistics": ["Descriptive Statistics", "Frequency Distribution",
                       "Normal Distribution", "Probability Basics",
                       "Correlation & Regression", "Box Plot & Outliers",
-                      "Central Tendency Viz"],
+                      "Central Tendency Viz",
+                      "t-Test (One Sample)", "t-Test (Independent)",
+                      "Paired t-Test", "Chi-Square Test"],
 }
 
 topic = st.sidebar.radio("Topic", topic_map[category])
+
+# ── Helper: Statistical distributions ─────────────────────
+def t_pdf(x, df):
+    import math
+    return math.gamma((df+1)/2) / (math.sqrt(df*math.pi) * math.gamma(df/2)) * (1 + x*x/df) ** (-(df+1)/2)
+
+def t_cdf(t_val, df):
+    """Approximate t-distribution CDF using Simpson's rule."""
+    import math
+    if t_val <= -10: return 0.0
+    if t_val >= 10: return 1.0
+    steps = 200
+    a, b = -10, t_val
+    h = (b - a) / steps
+    s = t_pdf(a, df) + t_pdf(b, df)
+    for i in range(1, steps):
+        s += 4 * t_pdf(a + i*h, df) if i % 2 else 2 * t_pdf(a + i*h, df)
+    return s * h / 3
+
+def t_ppf(p, df):
+    """Approximate t-distribution inverse CDF (binary search)."""
+    if p <= 0.0001: return -8
+    if p >= 0.9999: return 8
+    lo, hi = -8.0, 8.0
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        if t_cdf(mid, df) < p: lo = mid
+        else: hi = mid
+    return (lo + hi) / 2
+
+def chi2_pdf(x, k):
+    import math
+    if x <= 0: return 0
+    return x**(k/2 - 1) * math.exp(-x/2) / (2**(k/2) * math.gamma(k/2))
+
+def chi2_cdf(x, k):
+    """Chi-square CDF via Simpson integration (avoids x=0 singularity for small df)."""
+    import math
+    if x <= 0: return 0.0
+    if x >= 100: return 1.0
+    # Avoid singularity at x=0 for df <= 2
+    if k <= 2:
+        a = x / 3000  # start slightly right of 0
+        # Correction: area from 0 to a (approx for df=1: 2*sqrt(a/(2*pi)))
+        corr = 2 * math.sqrt(a / (2 * math.pi)) if k == 1 else a * math.exp(-a/2) / 2
+    else:
+        a, corr = 0.0, 0.0
+    b = x
+    steps = 300
+    h = (b - a) / steps
+    s = chi2_pdf(a, k) + chi2_pdf(b, k)
+    for i in range(1, steps):
+        xi = a + i*h
+        s += 4 * chi2_pdf(xi, k) if i % 2 else 2 * chi2_pdf(xi, k)
+    return min(1.0, max(0.0, corr + s * h / 3))
+
+def cohens_d(sample, pop_mean):
+    return (np.mean(sample) - pop_mean) / np.std(sample, ddof=1) if np.std(sample, ddof=1) > 0 else 0
+
+def interpret_p(p_val):
+    if p_val >= 0.05: return "Not significant (p ≥ 0.05)", "#888"
+    if p_val >= 0.01: return "Significant (p < 0.05)", "#f59e0b"
+    if p_val >= 0.001: return "Very significant (p < 0.01)", "#f97316"
+    return "Highly significant (p < 0.001)", "#ef4444"
 
 # ── Exponential Functions ────────────────────────────────
 # ── Linear Functions ─────────────────────────────────────
@@ -3475,6 +3541,501 @@ elif topic == "Central Tendency Viz":
     - **Right-skewed (Positive):** Mean > Median > Mode
     - **Left-skewed (Negative):** Mean < Median < Mode
     """)
+
+
+# ═══════════════════════════════════════════════════════════════
+# 📊 INFERENTIAL STATISTICS
+# ═══════════════════════════════════════════════════════════════
+
+# ── t-Test (One Sample) ───────────────────────────────────
+elif topic == "t-Test (One Sample)":
+    st.markdown("## t-Test: One Sample")
+    st.markdown(r"Compare a sample mean to a known population mean $\mu_0$.")
+
+    data_input = st.text_area("Sample data (comma/space separated)",
+                               value="105, 108, 103, 107, 110, 106, 104, 109, 105, 107",
+                               height=70)
+
+    try:
+        sample = np.array([float(x.strip()) for x in data_input.replace(",", " ").split() if x.strip()])
+    except ValueError:
+        st.error("Invalid numeric data.")
+        sample = np.array([])
+
+    pop_mean = st.number_input("Population mean (μ₀)", value=100.0, step=1.0, format="%.2f")
+
+    if len(sample) >= 3:
+        n = len(sample)
+        sample_mean = np.mean(sample)
+        sample_std = np.std(sample, ddof=1)
+        se = sample_std / math.sqrt(n)
+        t_stat = (sample_mean - pop_mean) / se if se > 0 else 0
+        df = n - 1
+        p_val = 2 * (1 - t_cdf(abs(t_stat), df))  # two-tailed
+        d_val = cohens_d(sample, pop_mean)
+        interpretation, p_color = interpret_p(p_val)
+
+        # Hypothesis info
+        st.info("**H₀:** μ = μ₀  &nbsp;|&nbsp; **H₁:** μ ≠ μ₀  (two-tailed)")
+
+        col_a1, col_a2, col_a3, col_a4 = st.columns(4)
+        with col_a1:
+            st.markdown(f"""<div class='result-box'><b>t-statistic</b><br><span style='font-size:1.4em'>{t_stat:.4f}</span></div>""", unsafe_allow_html=True)
+        with col_a2:
+            st.markdown(f"""<div class='result-box'><b>df</b><br><span style='font-size:1.4em'>{df}</span></div>""", unsafe_allow_html=True)
+        with col_a3:
+            st.markdown(f"""<div class='result-box'><b>p-value</b><br><span style='font-size:1.2em'>{p_val:.6f}</span></div>""", unsafe_allow_html=True)
+        with col_a4:
+            st.markdown(f"""<div class='result-box' style='border-left:4px solid {p_color}'><b>Cohen's d</b><br><span style='font-size:1.2em'>{d_val:.4f}</span></div>""", unsafe_allow_html=True)
+
+        st.markdown(f"""<div class='result-box' style='border-left:4px solid {p_color}'><b>{interpretation}</b></div>""", unsafe_allow_html=True)
+
+        st.latex(rf"t = \frac{{\bar{{x}} - \mu_0}}{{s/\sqrt{{n}}}} = \frac{{{sample_mean:.2f} - {pop_mean:.2f}}}{{{sample_std:.2f}/\sqrt{{{n}}}}} = {t_stat:.4f}")
+
+        # Visualization: t-distribution with test statistic
+        x_t = np.linspace(-5, 5, 400)
+        y_t = np.array([math.gamma((df+1)/2) / (math.sqrt(df*math.pi) * math.gamma(df/2)) * (1 + xv*xv/df) ** (-(df+1)/2) for xv in x_t])
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x_t, y=y_t, mode="lines", name=f"t-dist (df={df})",
+                                 line=dict(color="#6366f1", width=2)))
+        # Shade critical regions
+        alpha = 0.05
+        t_crit = t_ppf(1 - alpha/2, df)
+        x_crit_l = x_t[x_t <= -t_crit]
+        x_crit_r = x_t[x_t >= t_crit]
+        y_crit_l = y_t[:len(x_crit_l)]
+        y_crit_r = y_t[-len(x_crit_r):]
+        if len(x_crit_l) > 1:
+            fig.add_trace(go.Scatter(x=np.concatenate([x_crit_l, [-t_crit]]),
+                                     y=np.concatenate([y_crit_l, [0]]),
+                                     fill="toself", fillcolor="rgba(239,68,68,0.2)",
+                                     line=dict(color="rgba(0,0,0,0)"), name="α/2 = 0.025"))
+        if len(x_crit_r) > 1:
+            fig.add_trace(go.Scatter(x=np.concatenate([[t_crit], x_crit_r]),
+                                     y=np.concatenate([[0], y_crit_r]),
+                                     fill="toself", fillcolor="rgba(239,68,68,0.2)",
+                                     line=dict(color="rgba(0,0,0,0)"), name="α/2 = 0.025"))
+        fig.add_vline(x=t_stat, line=dict(color="#10b981", width=2, dash="dash"),
+                      annotation_text=f"t = {t_stat:.2f}")
+        fig.add_vline(x=-t_crit, line=dict(color="#ef4444", width=1, dash="dot"),
+                      annotation_text=f"-t_crit={t_crit:.3f}")
+        fig.add_vline(x=t_crit, line=dict(color="#ef4444", width=1, dash="dot"),
+                      annotation_text=f"t_crit={t_crit:.3f}")
+        fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20),
+                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                          font_color="#ccc", xaxis_title="t", yaxis_title="Density")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Enter at least 3 sample values.")
+
+
+# ── t-Test (Independent) ──────────────────────────────────
+elif topic == "t-Test (Independent)":
+    st.markdown("## t-Test: Two Independent Samples")
+    st.markdown(r"Compare means of two independent groups (Welch's t-test).")
+
+    data_preset = st.selectbox("Sample data", ["Custom", "Example: Drug trial", "Example: Before/After (different groups)"])
+
+    default_a = "23, 25, 21, 27, 24, 22, 26, 20, 28, 25"
+    default_b = "18, 20, 19, 22, 17, 21, 20, 18, 23, 19"
+    if "Drug" in data_preset:
+        default_a = "145, 148, 142, 150, 147, 143, 146, 149, 144, 151"
+        default_b = "138, 135, 140, 142, 136, 139, 137, 141, 134, 143"
+    elif "Before" in data_preset:
+        default_a = "75, 68, 72, 70, 74, 71, 69, 73, 76, 70"
+        default_b = "65, 60, 62, 58, 64, 61, 59, 63, 66, 62"
+
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        st.markdown("**Group 1**")
+        input_a = st.text_area("Data (Group 1)", value=default_a, height=60, key="ind_a")
+    with col_g2:
+        st.markdown("**Group 2**")
+        input_b = st.text_area("Data (Group 2)", value=default_b, height=60, key="ind_b")
+
+    try:
+        group1 = np.array([float(x.strip()) for x in input_a.replace(",", " ").split() if x.strip()])
+        group2 = np.array([float(x.strip()) for x in input_b.replace(",", " ").split() if x.strip()])
+    except ValueError:
+        st.error("Invalid data.")
+        group1, group2 = np.array([]), np.array([])
+
+    if len(group1) >= 3 and len(group2) >= 3:
+        n1, n2 = len(group1), len(group2)
+        m1, m2 = np.mean(group1), np.mean(group2)
+        v1, v2 = np.var(group1, ddof=1), np.var(group2, ddof=1)
+
+        # Welch's t-test
+        se_welch = math.sqrt(v1/n1 + v2/n2)
+        t_stat = (m1 - m2) / se_welch if se_welch > 0 else 0
+        # Welch-Satterthwaite df
+        num = (v1/n1 + v2/n2)**2
+        denom = (v1/n1)**2/(n1-1) + (v2/n2)**2/(n2-1)
+        df = num / denom if denom > 0 else n1 + n2 - 2
+        p_val = 2 * (1 - t_cdf(abs(t_stat), int(df)))
+        diff = m1 - m2
+        pooled_std = math.sqrt(((n1-1)*v1 + (n2-1)*v2) / (n1+n2-2))
+        d_val = diff / pooled_std if pooled_std > 0 else 0
+        interpretation, p_color = interpret_p(p_val)
+
+        st.info("**H₀:** μ₁ = μ₂  &nbsp;|&nbsp; **H₁:** μ₁ ≠ μ₂  (Welch's t-test)")
+
+        col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+        with col_b1:
+            st.markdown(f"""<div class='result-box'><b>t-statistic</b><br><span style='font-size:1.4em'>{t_stat:.4f}</span></div>""", unsafe_allow_html=True)
+        with col_b2:
+            st.markdown(f"""<div class='result-box'><b>df</b><br><span style='font-size:1.4em'>{df:.2f}</span></div>""", unsafe_allow_html=True)
+        with col_b3:
+            st.markdown(f"""<div class='result-box'><b>p-value</b><br><span style='font-size:1.2em'>{p_val:.6f}</span></div>""", unsafe_allow_html=True)
+        with col_b4:
+            st.markdown(f"""<div class='result-box' style='border-left:4px solid {p_color}'><b>Cohen's d</b><br><span style='font-size:1.2em'>{d_val:.4f}</span></div>""", unsafe_allow_html=True)
+
+        st.markdown(f"""<div class='result-box' style='border-left:4px solid {p_color}'><b>{interpretation}</b></div>""", unsafe_allow_html=True)
+
+        # Group comparison
+        fig = go.Figure()
+        fig.add_trace(go.Box(y=group1, name="Group 1", marker_color="#6366f1", boxmean=True))
+        fig.add_trace(go.Box(y=group2, name="Group 2", marker_color="#f59e0b", boxmean=True))
+        fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20),
+                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                          font_color="#ccc", yaxis_title="Value")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Distribution of difference
+        st.latex(rf"t = \frac{{\bar{{x}}_1 - \bar{{x}}_2}}{{\sqrt{{s_1^2/n_1 + s_2^2/n_2}}}} = \frac{{{m1:.2f} - {m2:.2f}}}{{\sqrt{{{v1:.2f}/{n1} + {v2:.2f}/{n2}}}}} = {t_stat:.4f}")
+    else:
+        st.info("Enter at least 3 values for each group.")
+
+
+# ── Paired t-Test ─────────────────────────────────────────
+elif topic == "Paired t-Test":
+    st.markdown("## Paired t-Test")
+    st.markdown(r"Compare means of two related samples (before/after, matched pairs).")
+
+    data_preset = st.selectbox("Sample data", ["Custom", "Example: Before/After treatment",
+                                                "Example: Exam scores (pre/post)"], key="pair_preset")
+
+    default_before = "75, 68, 72, 70, 74, 71, 69, 73, 76, 70"
+    default_after = "80, 72, 78, 74, 79, 76, 73, 77, 82, 74"
+    if "treatment" in data_preset:
+        default_before = "120, 118, 122, 115, 119, 121, 117, 123, 116, 120"
+        default_after = "110, 108, 112, 106, 109, 111, 107, 113, 105, 110"
+    elif "Exam" in data_preset:
+        default_before = "55, 60, 52, 58, 54, 61, 53, 57, 56, 59"
+        default_after = "70, 75, 68, 72, 71, 78, 69, 73, 74, 76"
+
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        st.markdown("**Before / Pair 1**")
+        before_input = st.text_area("Before", value=default_before, height=60, key="paired_before")
+    with col_p2:
+        st.markdown("**After / Pair 2**")
+        after_input = st.text_area("After", value=default_after, height=60, key="paired_after")
+
+    try:
+        before = np.array([float(x.strip()) for x in before_input.replace(",", " ").split() if x.strip()])
+        after = np.array([float(x.strip()) for x in after_input.replace(",", " ").split() if x.strip()])
+    except ValueError:
+        st.error("Invalid data.")
+        before, after = np.array([]), np.array([])
+
+    if len(before) >= 3 and len(before) == len(after):
+        n = len(before)
+        diff = after - before
+        diff_mean = np.mean(diff)
+        diff_std = np.std(diff, ddof=1)
+        se = diff_std / math.sqrt(n)
+        t_stat = diff_mean / se if se > 0 else 0
+        df = n - 1
+        p_val = 2 * (1 - t_cdf(abs(t_stat), df))
+        d_val = abs(diff_mean) / diff_std if diff_std > 0 else 0
+        interpretation, p_color = interpret_p(p_val)
+
+        st.info("**H₀:** μ_d = 0  &nbsp;|&nbsp; **H₁:** μ_d ≠ 0  (paired, two-tailed)")
+
+        col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+        with col_c1:
+            st.markdown(f"""<div class='result-box'><b>t-statistic</b><br><span style='font-size:1.4em'>{t_stat:.4f}</span></div>""", unsafe_allow_html=True)
+        with col_c2:
+            st.markdown(f"""<div class='result-box'><b>df</b><br><span style='font-size:1.4em'>{df}</span></div>""", unsafe_allow_html=True)
+        with col_c3:
+            st.markdown(f"""<div class='result-box'><b>p-value</b><br><span style='font-size:1.2em'>{p_val:.6f}</span></div>""", unsafe_allow_html=True)
+        with col_c4:
+            st.markdown(f"""<div class='result-box' style='border-left:4px solid {p_color}'><b>Cohen's d_z</b><br><span style='font-size:1.2em'>{d_val:.4f}</span></div>""", unsafe_allow_html=True)
+
+        st.markdown(f"""<div class='result-box' style='border-left:4px solid {p_color}'><b>{interpretation}</b></div>""", unsafe_allow_html=True)
+
+        st.latex(rf"t = \frac{{\bar{{d}}}}{{s_d/\sqrt{{n}}}} = \frac{{{diff_mean:.2f}}}{{{diff_std:.2f}/\sqrt{{{n}}}}} = {t_stat:.4f}")
+
+        # Before/After comparison
+        fig = go.Figure()
+        for i in range(min(n, 20)):
+            fig.add_trace(go.Scatter(x=["Before", "After"], y=[before[i], after[i]],
+                                     mode="lines+markers", line=dict(color="rgba(99,102,241,0.3)"),
+                                     marker=dict(size=4), showlegend=False))
+        fig.add_trace(go.Scatter(x=["Before", "After"],
+                                 y=[np.mean(before), np.mean(after)],
+                                 mode="lines+markers",
+                                 line=dict(color="#ef4444", width=3),
+                                 marker=dict(size=12, symbol="star", color="#ef4444"),
+                                 name="Mean"))
+        fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20),
+                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                          font_color="#ccc", yaxis_title="Value")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Differences distribution
+        fig2 = go.Figure()
+        fig2.add_trace(go.Histogram(x=diff, nbinsx=min(15, n), marker_color="#6366f1", opacity=0.7,
+                                     name="Differences"))
+        fig2.add_vline(x=diff_mean, line=dict(color="#10b981", width=2, dash="dash"),
+                       annotation_text=f"d̄={diff_mean:.2f}")
+        fig2.add_vline(x=0, line=dict(color="#ef4444", width=2, dash="dot"),
+                       annotation_text="H₀: d=0")
+        fig2.update_layout(height=250, margin=dict(l=20, r=20, t=20, b=20),
+                           plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                           font_color="#ccc", xaxis_title="Difference (After - Before)",
+                           yaxis_title="Frequency")
+        st.plotly_chart(fig2, use_container_width=True)
+
+        # Pair data table
+        df_pairs = pd.DataFrame({"Before": before, "After": after, "Difference": after - before})
+        with st.expander("📋 Pair data"):
+            st.dataframe(df_pairs, use_container_width=True, hide_index=True)
+    elif len(before) != len(after):
+        st.warning("Both groups must have the same number of values.")
+    else:
+        st.info("Enter at least 3 pairs of values.")
+
+
+# ── Chi-Square Test ───────────────────────────────────────
+elif topic == "Chi-Square Test":
+    st.markdown("## Chi-Square Test")
+    st.markdown("Test goodness of fit or independence between categorical variables.")
+
+    test_type = st.radio("Test type", ["Goodness of Fit", "Test of Independence"], horizontal=True)
+
+    if test_type == "Goodness of Fit":
+        st.markdown(r"**H₀:** Observed frequencies match expected distribution.")
+
+        preset = st.selectbox("Example", ["Custom", "Mendel's peas (9:3:3:1)", "Fair die (1:1:1:1:1:1)"])
+
+        if "Mendel" in preset:
+            default_cats = "Round Yellow, Round Green, Wrinkled Yellow, Wrinkled Green"
+            default_obs = "315, 108, 101, 32"
+            default_exp = "312.75, 104.25, 104.25, 34.75"
+        elif "Fair die" in preset:
+            default_cats = "1, 2, 3, 4, 5, 6"
+            default_obs = "15, 20, 12, 18, 14, 11"
+            default_exp = "15, 15, 15, 15, 15, 15"
+        else:
+            default_cats = "Category A, Category B, Category C"
+            default_obs = "50, 30, 20"
+            default_exp = "33.3, 33.3, 33.3"
+
+        col_gf1, col_gf2 = st.columns(2)
+        with col_gf1:
+            cat_input = st.text_area("Category names (comma separated)", value=default_cats, height=60)
+            obs_input = st.text_area("Observed frequencies", value=default_obs, height=60)
+        with col_gf2:
+            exp_input = st.text_area("Expected frequencies", value=default_exp, height=60)
+
+        try:
+            categories = [c.strip() for c in cat_input.split(",") if c.strip()]
+            observed = np.array([float(x.strip()) for x in obs_input.replace(",", " ").split() if x.strip()])
+            expected = np.array([float(x.strip()) for x in exp_input.replace(",", " ").split() if x.strip()])
+        except ValueError:
+            st.error("Invalid numeric input.")
+            observed, expected = np.array([]), np.array([])
+
+        if len(observed) >= 2 and len(observed) == len(expected) == len(categories):
+            chi2_stat = np.sum((observed - expected)**2 / expected)
+            df = len(categories) - 1
+            p_val = 1 - chi2_cdf(chi2_stat, df)
+            interpretation, p_color = interpret_p(p_val)
+
+            # Cramer's V for effect size
+            n_total = np.sum(observed)
+            cramer_v = math.sqrt(chi2_stat / (n_total * (len(categories) - 1))) if n_total > 0 else 0
+
+            st.markdown(f"""<div class='result-box' style='border-left:4px solid {p_color}'><b>{interpretation}</b></div>""", unsafe_allow_html=True)
+
+            col_d1, col_d2, col_d3, col_d4 = st.columns(4)
+            with col_d1:
+                st.markdown(f"""<div class='result-box'><b>χ²</b><br><span style='font-size:1.4em'>{chi2_stat:.4f}</span></div>""", unsafe_allow_html=True)
+            with col_d2:
+                st.markdown(f"""<div class='result-box'><b>df</b><br><span style='font-size:1.4em'>{df}</span></div>""", unsafe_allow_html=True)
+            with col_d3:
+                st.markdown(f"""<div class='result-box'><b>p-value</b><br><span style='font-size:1.2em'>{p_val:.6f}</span></div>""", unsafe_allow_html=True)
+            with col_d4:
+                st.markdown(f"""<div class='result-box'><b>Cramer's V</b><br><span style='font-size:1.2em'>{cramer_v:.4f}</span></div>""", unsafe_allow_html=True)
+
+            # Comparison table
+            comp_rows = []
+            for i, cat in enumerate(categories):
+                resid = (observed[i] - expected[i]) / math.sqrt(expected[i]) if expected[i] > 0 else 0
+                comp_rows.append({
+                    "Category": cat,
+                    "Observed": int(observed[i]),
+                    "Expected": f"{expected[i]:.2f}",
+                    "(O−E)²/E": f"{(observed[i]-expected[i])**2/expected[i]:.4f}",
+                    "Std. Residual": f"{resid:.3f}",
+                })
+            st.dataframe(pd.DataFrame(comp_rows), use_container_width=True, hide_index=True)
+
+            # Visualization
+            fig = go.Figure()
+            fig.add_trace(go.Bar(name="Observed", x=categories, y=observed, marker_color="#6366f1", opacity=0.8))
+            fig.add_trace(go.Bar(name="Expected", x=categories, y=expected, marker_color="#f59e0b", opacity=0.5))
+            fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20), barmode="group",
+                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                              font_color="#ccc", xaxis_title="Category", yaxis_title="Frequency")
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Chi-square distribution
+            x_cs = np.linspace(0, max(chi2_stat * 2, 15), 400)
+            y_cs = np.array([chi2_pdf(xv, df) for xv in x_cs])
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(x=x_cs, y=y_cs, mode="lines", name=f"χ² (df={df})",
+                                      line=dict(color="#6366f1", width=2)))
+            # Shade p-value region
+            x_shade = x_cs[x_cs >= chi2_stat]
+            y_shade = y_cs[-len(x_shade):] if len(x_shade) == len(x_cs[x_cs >= chi2_stat]) else np.array([])
+            if len(x_shade) > 1:
+                fig2.add_trace(go.Scatter(x=np.concatenate([[chi2_stat], x_shade]),
+                                          y=np.concatenate([[0], y_shade]),
+                                          fill="toself", fillcolor="rgba(239,68,68,0.2)",
+                                          line=dict(color="rgba(0,0,0,0)"), name="p-value"))
+            fig2.add_vline(x=chi2_stat, line=dict(color="#ef4444", width=2, dash="dash"),
+                           annotation_text=f"χ²={chi2_stat:.2f}")
+            fig2.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20),
+                               plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                               font_color="#ccc", xaxis_title="χ²", yaxis_title="Density")
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.warning("All arrays (categories, observed, expected) must have the same length.")
+
+    else:  # Test of Independence
+        st.markdown(r"**H₀:** Variables are independent. **H₁:** Variables are associated.")
+
+        preset_ci = st.selectbox("Example", ["Custom", "Gender × Preference", "Treatment × Recovery"])
+
+        if "Gender" in preset_ci:
+            default_rows = "Male, Female"
+            default_cols = "Product A, Product B, Product C"
+            default_matrix = "20, 30, 25\n25, 20, 30"
+        elif "Treatment" in preset_ci:
+            default_rows = "Drug A, Drug B, Placebo"
+            default_cols = "Recovered, Not Recovered"
+            default_matrix = "45, 15\n30, 30\n15, 45"
+        else:
+            default_rows = "Row 1, Row 2"
+            default_cols = "Col A, Col B, Col C"
+            default_matrix = "10, 20, 15\n15, 10, 20"
+
+        col_ci1, col_ci2, col_ci3 = st.columns([1, 1, 2])
+        with col_ci1:
+            row_input = st.text_area("Row labels", value=default_rows, height=60)
+        with col_ci2:
+            col_input = st.text_area("Column labels", value=default_cols, height=60)
+        with col_ci3:
+            matrix_input = st.text_area("Contingency table (comma separated, one row per line)",
+                                         value=default_matrix, height=80)
+
+        try:
+            rows = [r.strip() for r in row_input.split(",") if r.strip()]
+            cols = [c.strip() for c in col_input.split(",") if c.strip()]
+            obs_matrix = np.array([
+                [float(x.strip()) for x in line.split(",") if x.strip()]
+                for line in matrix_input.strip().split("\n") if line.strip()
+            ])
+        except ValueError:
+            st.error("Invalid input.")
+            obs_matrix = np.array([])
+
+        if obs_matrix.size > 0 and obs_matrix.shape == (len(rows), len(cols)):
+            # Expected frequencies
+            row_totals = obs_matrix.sum(axis=1)
+            col_totals = obs_matrix.sum(axis=0)
+            grand_total = obs_matrix.sum()
+            exp_matrix = np.outer(row_totals, col_totals) / grand_total
+
+            chi2_stat = np.sum((obs_matrix - exp_matrix)**2 / exp_matrix)
+            df = (len(rows) - 1) * (len(cols) - 1)
+            p_val = 1 - chi2_cdf(chi2_stat, df)
+            interpretation, p_color = interpret_p(p_val)
+
+            # Cramer's V
+            k = min(len(rows), len(cols))
+            cramer_v = math.sqrt(chi2_stat / (grand_total * (k - 1))) if grand_total > 0 and k > 1 else 0
+
+            st.markdown(f"""<div class='result-box' style='border-left:4px solid {p_color}'><b>{interpretation}</b></div>""", unsafe_allow_html=True)
+
+            col_e1, col_e2, col_e3, col_e4 = st.columns(4)
+            with col_e1:
+                st.markdown(f"""<div class='result-box'><b>χ²</b><br><span style='font-size:1.4em'>{chi2_stat:.4f}</span></div>""", unsafe_allow_html=True)
+            with col_e2:
+                st.markdown(f"""<div class='result-box'><b>df</b><br><span style='font-size:1.4em'>{df}</span></div>""", unsafe_allow_html=True)
+            with col_e3:
+                st.markdown(f"""<div class='result-box'><b>p-value</b><br><span style='font-size:1.2em'>{p_val:.6f}</span></div>""", unsafe_allow_html=True)
+            with col_e4:
+                st.markdown(f"""<div class='result-box'><b>Cramer's V</b><br><span style='font-size:1.2em'>{cramer_v:.4f}</span></div>""", unsafe_allow_html=True)
+
+            # Show contingency table
+            st.subheader("📋 Contingency Table (Observed / Expected)")
+            table_data = []
+            for i, row_label in enumerate(rows):
+                row_entries = []
+                for j, col_label in enumerate(cols):
+                    row_entries.append(f"{int(obs_matrix[i,j])} / {exp_matrix[i,j]:.1f}")
+                table_data.append([row_label] + row_entries + [int(row_totals[i])])
+            # Column headers
+            headers = [""] + cols + ["Total"]
+            df_display = pd.DataFrame(table_data, columns=headers)
+            st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+            # Add total row
+            total_row = ["Total"] + [f"{int(col_totals[j])} / {col_totals[j]:.0f}" for j in range(len(cols))] + [int(grand_total)]
+            st.caption(f"| {' | '.join(str(h) for h in total_row)} |")
+
+            # Heatmap
+            fig = go.Figure()
+            # Calculate standardized residuals
+            std_resid = (obs_matrix - exp_matrix) / np.sqrt(exp_matrix * (1 - np.outer(row_totals, col_totals)/grand_total**2))
+            zmax = max(abs(std_resid).max(), 3)
+            fig.add_trace(go.Heatmap(
+                z=std_resid, x=cols, y=rows,
+                colorscale="RdBu", zmin=-zmax, zmax=zmax,
+                text=np.array([[f"{int(obs_matrix[i,j])}" for j in range(len(cols))] for i in range(len(rows))]),
+                texttemplate="%{text}", hovertemplate="Row: %{y}<br>Col: %{x}<br>Std Res: %{z:.3f}<extra></extra>"
+            ))
+            fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20),
+                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                              font_color="#ccc", xaxis_title="", yaxis_title="")
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Chi-square distribution plot
+            x_cs = np.linspace(0, max(chi2_stat * 2, 15), 400)
+            y_cs = np.array([chi2_pdf(xv, df) for xv in x_cs])
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(x=x_cs, y=y_cs, mode="lines", name=f"χ² (df={df})",
+                                      line=dict(color="#6366f1", width=2)))
+            x_shade = x_cs[x_cs >= chi2_stat]
+            y_shade = y_cs[-len(x_shade):]
+            if len(x_shade) > 1:
+                fig2.add_trace(go.Scatter(x=np.concatenate([[chi2_stat], x_shade]),
+                                          y=np.concatenate([[0], y_shade]),
+                                          fill="toself", fillcolor="rgba(239,68,68,0.2)",
+                                          line=dict(color="rgba(0,0,0,0)"), name="p-value"))
+            fig2.add_vline(x=chi2_stat, line=dict(color="#ef4444", width=2, dash="dash"),
+                           annotation_text=f"χ²={chi2_stat:.2f}")
+            fig2.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20),
+                               plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                               font_color="#ccc", xaxis_title="χ²", yaxis_title="Density")
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.warning(f"Table must match: {len(rows)} rows × {len(cols)} columns.")
 
 
 # ── FOOTER ────────────────────────────────────────────────
