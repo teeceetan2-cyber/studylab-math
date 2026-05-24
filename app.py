@@ -3010,63 +3010,130 @@ elif topic == "Descriptive Statistics":
 # ── Frequency Distribution ───────────────────────────────
 elif topic == "Frequency Distribution":
     st.markdown("## Frequency Distribution")
-    st.markdown("Create grouped frequency tables and histograms from raw data.")
+    st.markdown("Create grouped frequency tables and histograms. Choose auto bins or set your own intervals.")
 
     data_input = st.text_area("Enter numbers",
                                value="55, 60, 62, 63, 65, 66, 68, 70, 71, 72, 73, 74, 75, 76, 78, 80, 82, 85, 90",
                                height=80)
 
     try:
-        data = [float(x.strip()) for x in data_input.replace(",", " ").split() if x.strip()]
+        data = np.array([float(x.strip()) for x in data_input.replace(",", " ").split() if x.strip()])
     except ValueError:
         st.error("Invalid input.")
-        data = []
+        data = np.array([])
 
     if len(data) >= 3:
-        n_bins = st.slider("Number of bins", 3, 20, min(8, len(data)), key="freq_bins")
-
-        # Compute bin edges (nice round numbers)
         min_d, max_d = min(data), max(data)
-        bin_width = (max_d - min_d) / n_bins if max_d > min_d else 1
-        bin_edges = [min_d + i * bin_width for i in range(n_bins + 1)]
 
-        # Frequency table
+        # ── Bin Mode Selection ──
+        bin_mode = st.radio("Bin mode", ["Auto bins", "Custom interval", "Manual boundaries"], horizontal=True)
+
+        if bin_mode == "Auto bins":
+            n_bins = st.slider("Number of bins", 2, 20, min(8, len(data)), key="freq_bins")
+
+            # Round bin edges to nice numbers
+            data_range = max_d - min_d
+            if data_range == 0:
+                raw_width = 1
+            else:
+                raw_width = data_range / n_bins
+            # Round to a nice number
+            nice_magnitude = 10 ** math.floor(math.log10(raw_width)) if raw_width > 0 else 1
+            nice_width = math.ceil(raw_width / nice_magnitude) * nice_magnitude
+            if nice_width == 0:
+                nice_width = 1
+            # Round start down to nice number
+            nice_start = math.floor(min_d / nice_magnitude) * nice_magnitude
+            # Build edges
+            bin_edges = []
+            edge = nice_start
+            while edge <= max_d + nice_width:
+                bin_edges.append(edge)
+                edge += nice_width
+            if len(bin_edges) < 3:
+                bin_edges = [min_d + i * (max_d - min_d) / n_bins for i in range(n_bins + 1)]
+
+            st.markdown(f"""<div class='result-box'><b>Interval width:</b> {nice_width} &nbsp;|&nbsp; 
+                <b>Range:</b> {min_d} — {max_d} &nbsp;|&nbsp; <b>Classes:</b> {len(bin_edges)-1}</div>""", unsafe_allow_html=True)
+
+        elif bin_mode == "Custom interval":
+            col_i1, col_i2 = st.columns(2)
+            with col_i1:
+                custom_start = st.number_input("Start value", value=math.floor(min_d / 5) * 5 if min_d >= 0 else math.floor(min_d), step=1, format="%d", key="freq_start")
+            with col_i2:
+                custom_width = st.number_input("Class width", min_value=1, value=5, step=1, format="%d", key="freq_width")
+
+            # Build edges
+            bin_edges = []
+            edge = float(custom_start)
+            while edge <= max_d:
+                bin_edges.append(edge)
+                edge += float(custom_width)
+            bin_edges.append(edge)  # one extra to cover max
+
+            st.markdown(f"""<div class='result-box'><b>Interval width:</b> {custom_width} &nbsp;|&nbsp; 
+                <b>Start:</b> {custom_start} &nbsp;|&nbsp; <b>Classes:</b> {len(bin_edges)-1}</div>""", unsafe_allow_html=True)
+
+        else:  # Manual boundaries
+            bound_input = st.text_input("Bin boundaries (comma separated)",
+                                         value=", ".join(str(int(min_d + i * (max_d - min_d) / 5)) for i in range(6)),
+                                         help="e.g., 50, 60, 70, 80, 90, 100  — creates 5 bins: 50-60, 60-70, ..., 90-100")
+            try:
+                bin_edges = [float(x.strip()) for x in bound_input.replace(",", " ").split() if x.strip()]
+                bin_edges = sorted(set(bin_edges))
+                if len(bin_edges) < 2:
+                    st.warning("Enter at least 2 boundaries (one class).")
+                    bin_edges = [min_d, max_d]
+            except ValueError:
+                st.error("Invalid boundaries. Use numbers separated by commas.")
+                bin_edges = [min_d, max_d]
+
+        # ── Frequency Table ──
         counts, edges = np.histogram(data, bins=bin_edges)
         freq_rows = []
         for i in range(len(counts)):
+            low = edges[i]
+            high = edges[i+1]
+            midpoint = (low + high) / 2
             freq_rows.append({
-                "Class": f"{edges[i]:.2f} — {edges[i+1]:.2f}",
+                "Class": f"{low:.2f} — {high:.2f}",
+                "Midpoint": f"{midpoint:.2f}",
                 "Frequency": counts[i],
-                "Relative Freq": f"{counts[i]/len(data)*100:.1f}%",
-                "Cumulative": f"{sum(counts[:i+1])}",
-                "Cumulative %": f"{sum(counts[:i+1])/len(data)*100:.1f}%",
+                "Rel. Freq": f"{counts[i]/len(data)*100:.1f}%",
+                "Cumulative": sum(counts[:i+1]),
+                "Cum. %": f"{sum(counts[:i+1])/len(data)*100:.1f}%",
             })
 
-        col_t, col_f = st.columns([1, 1])
+        col_t, col_f = st.columns([1.5, 1])
         with col_t:
             st.dataframe(pd.DataFrame(freq_rows), use_container_width=True, hide_index=True)
         with col_f:
-            st.metric("Total", len(data))
+            st.metric("Total values", len(data))
+            st.metric("Number of classes", len(counts))
 
-        # Histogram
+        # ── Histogram ──
         fig = go.Figure()
-        fig.add_trace(go.Histogram(x=data, nbinsx=n_bins, marker_color="#6366f1", opacity=0.7,
-                                    name="Frequency"))
+        fig.add_trace(go.Bar(
+            x=[(edges[i] + edges[i+1]) / 2 for i in range(len(counts))],
+            y=counts,
+            width=[(edges[i+1] - edges[i]) * 0.85 for i in range(len(counts))],
+            marker_color="#6366f1", opacity=0.7, name="Frequency"
+        ))
         fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20),
                           plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
                           font_color="#ccc", xaxis_title="Value", yaxis_title="Frequency",
                           bargap=0.05)
         st.plotly_chart(fig, use_container_width=True)
 
-        # Cumulative frequency
+        # ── Cumulative frequency ──
         fig2 = go.Figure()
         cumsum = np.cumsum(counts)
         fig2.add_trace(go.Scatter(x=edges[1:], y=cumsum, mode="lines+markers",
                                    name="Cumulative", line=dict(color="#f59e0b", width=2),
                                    marker=dict(size=6)))
-        fig2.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20),
+        fig2.update_layout(height=280, margin=dict(l=20, r=20, t=20, b=20),
                            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                           font_color="#ccc", xaxis_title="Value", yaxis_title="Cumulative Frequency")
+                           font_color="#ccc", xaxis_title="Upper boundary", yaxis_title="Cumulative Frequency")
         st.plotly_chart(fig2, use_container_width=True)
     else:
         st.info("Enter at least 3 numeric values.")
