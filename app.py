@@ -27,6 +27,7 @@ category = st.sidebar.selectbox("Category", [
     "🧭 Vectors",
     "🧊 Geometry",
     "🔄 Transformations",
+    "📊 Statistics",
 ])
 
 topic_map = {
@@ -47,6 +48,10 @@ topic_map = {
                            "Enlargement (Dilation)", "Modulus |f(x)|",
                            "Inverse f⁻¹(x)", "Reciprocal 1/f(x)",
                            "Shear", "Stretch"],
+    "📊 Statistics": ["Descriptive Statistics", "Frequency Distribution",
+                      "Normal Distribution", "Probability Basics",
+                      "Correlation & Regression", "Box Plot & Outliers",
+                      "Central Tendency Viz"],
 }
 
 topic = st.sidebar.radio("Topic", topic_map[category])
@@ -2868,6 +2873,610 @@ elif topic == "Stretch":
     fig.add_vline(x=0, line=dict(color="#555", width=1, dash="dot"))
     fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), yaxis_range=[-12, 12], hovermode="x")
     st.plotly_chart(fig, use_container_width=True)
+# ═══════════════════════════════════════════════════════════════
+# 📊 STATISTICS
+# ═══════════════════════════════════════════════════════════════
+
+# ── Descriptive Statistics ────────────────────────────────
+elif topic == "Descriptive Statistics":
+    st.markdown("## Descriptive Statistics")
+    st.markdown("Compute mean, median, mode, range, quartiles, variance, and standard deviation.")
+
+    data_input = st.text_area("Enter numbers (comma, space, or newline separated)",
+                               value="12, 15, 14, 10, 18, 20, 22, 14, 16, 15, 13, 17",
+                               height=80)
+
+    try:
+        data = [float(x.strip()) for x in data_input.replace(",", " ").split() if x.strip()]
+    except ValueError:
+        st.error("Invalid input. Please enter numeric values.")
+        data = []
+
+    if len(data) >= 2:
+        data_sorted = sorted(data)
+        n = len(data)
+        mean_val = np.mean(data)
+        median_val = np.median(data)
+        data_unique, counts = np.unique(data, return_counts=True)
+        max_count = np.max(counts)
+        mode_vals = data_unique[counts == max_count]
+        mode_str = ", ".join(f"{v:.2f}" for v in mode_vals) if len(mode_vals) <= 3 else f"{len(mode_vals)} values"
+        range_val = max(data) - min(data)
+        variance_val = np.var(data, ddof=1)
+        std_val = np.std(data, ddof=1)
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"""<div class='result-box'><b>Mean</b><br><span style='font-size:1.4em'>{mean_val:.3f}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Median</b><br><span style='font-size:1.4em'>{median_val:.3f}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Mode</b><br><span style='font-size:1.4em'>{mode_str}</span></div>""", unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""<div class='result-box'><b>Min</b><br><span style='font-size:1.4em'>{min(data):.3f}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Q₁ (25th)</b><br><span style='font-size:1.4em'>{q1:.3f}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Q₃ (75th)</b><br><span style='font-size:1.4em'>{q3:.3f}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Max</b><br><span style='font-size:1.4em'>{max(data):.3f}</span></div>""", unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""<div class='result-box'><b>Range</b><br><span style='font-size:1.4em'>{range_val:.3f}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>IQR (Q₃−Q₁)</b><br><span style='font-size:1.4em'>{iqr:.3f}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Variance (s²)</b><br><span style='font-size:1.4em'>{variance_val:.4f}</span></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Std Dev (s)</b><br><span style='font-size:1.4em'>{std_val:.4f}</span></div>""", unsafe_allow_html=True)
+
+        # Data distribution chart
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=data, nbinsx=min(20, n), name="Data", marker_color="#6366f1", opacity=0.7))
+        fig.add_vline(x=mean_val, line=dict(color="#10b981", width=2, dash="dash"), annotation_text=f"μ={mean_val:.2f}")
+        fig.add_vline(x=median_val, line=dict(color="#f59e0b", width=2, dash="dot"), annotation_text=f"M={median_val:.2f}")
+        fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20),
+                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                          font_color="#ccc", xaxis_title="Value", yaxis_title="Frequency")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Data table
+        st.caption(f"Total values: {n}  |  Sorted: {', '.join(f'{v:.2f}' for v in data_sorted[:10])}{'...' if n > 10 else ''}")
+    else:
+        st.info("Enter at least 2 numeric values.")
+
+
+# ── Frequency Distribution ───────────────────────────────
+elif topic == "Frequency Distribution":
+    st.markdown("## Frequency Distribution")
+    st.markdown("Create grouped frequency tables and histograms from raw data.")
+
+    data_input = st.text_area("Enter numbers",
+                               value="55, 60, 62, 63, 65, 66, 68, 70, 71, 72, 73, 74, 75, 76, 78, 80, 82, 85, 90",
+                               height=80)
+
+    try:
+        data = [float(x.strip()) for x in data_input.replace(",", " ").split() if x.strip()]
+    except ValueError:
+        st.error("Invalid input.")
+        data = []
+
+    if len(data) >= 3:
+        n_bins = st.slider("Number of bins", 3, 20, min(8, len(data)), key="freq_bins")
+
+        # Compute bin edges (nice round numbers)
+        min_d, max_d = min(data), max(data)
+        bin_width = (max_d - min_d) / n_bins if max_d > min_d else 1
+        bin_edges = [min_d + i * bin_width for i in range(n_bins + 1)]
+
+        # Frequency table
+        counts, edges = np.histogram(data, bins=bin_edges)
+        freq_rows = []
+        for i in range(len(counts)):
+            freq_rows.append({
+                "Class": f"{edges[i]:.2f} — {edges[i+1]:.2f}",
+                "Frequency": counts[i],
+                "Relative Freq": f"{counts[i]/len(data)*100:.1f}%",
+                "Cumulative": f"{sum(counts[:i+1])}",
+                "Cumulative %": f"{sum(counts[:i+1])/len(data)*100:.1f}%",
+            })
+
+        col_t, col_f = st.columns([1, 1])
+        with col_t:
+            st.dataframe(pd.DataFrame(freq_rows), use_container_width=True, hide_index=True)
+        with col_f:
+            st.metric("Total", len(data))
+
+        # Histogram
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(x=data, nbinsx=n_bins, marker_color="#6366f1", opacity=0.7,
+                                    name="Frequency"))
+        fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20),
+                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                          font_color="#ccc", xaxis_title="Value", yaxis_title="Frequency",
+                          bargap=0.05)
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Cumulative frequency
+        fig2 = go.Figure()
+        cumsum = np.cumsum(counts)
+        fig2.add_trace(go.Scatter(x=edges[1:], y=cumsum, mode="lines+markers",
+                                   name="Cumulative", line=dict(color="#f59e0b", width=2),
+                                   marker=dict(size=6)))
+        fig2.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20),
+                           plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                           font_color="#ccc", xaxis_title="Value", yaxis_title="Cumulative Frequency")
+        st.plotly_chart(fig2, use_container_width=True)
+    else:
+        st.info("Enter at least 3 numeric values.")
+
+
+# ── Normal Distribution ───────────────────────────────────
+elif topic == "Normal Distribution":
+    st.markdown("## Normal Distribution")
+    st.markdown(r"Visualize the normal distribution $N(\mu, \sigma^2)$ and compute Z-scores.")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        mu = st.number_input("Mean (μ)", value=0.0, step=1.0, format="%.2f")
+    with col2:
+        sigma = st.number_input("Std Dev (σ)", min_value=0.01, value=1.0, step=0.5, format="%.2f")
+    with col3:
+        z = st.slider("Z-score", -4.0, 4.0, 1.0, 0.01, key="normal_z")
+
+    x = np.linspace(mu - 4*sigma, mu + 4*sigma, 400)
+    y = 1/(sigma * np.sqrt(2*np.pi)) * np.exp(-0.5 * ((x - mu)/sigma)**2)
+
+    # Area to the left of z using erf function
+    import math
+    area_left = 0.5 * (1 + math.erf(z / math.sqrt(2)))
+    area_right = 1 - area_left
+    z_x = mu + z * sigma
+
+    col_a, col_b, col_c = st.columns(3)
+    with col_a:
+        st.markdown(f"""<div class='result-box'><b>P(Z ≤ {z:.2f})</b><br><span style='font-size:1.4em'>{area_left:.4f}</span><br><small>{area_left*100:.2f}%</small></div>""", unsafe_allow_html=True)
+    with col_b:
+        st.markdown(f"""<div class='result-box'><b>P(Z > {z:.2f})</b><br><span style='font-size:1.4em'>{area_right:.4f}</span><br><small>{area_right*100:.2f}%</small></div>""", unsafe_allow_html=True)
+    with col_c:
+        pct = area_left * 100
+        st.markdown(f"""<div class='result-box'><b>Percentile</b><br><span style='font-size:1.4em'>{pct:.2f}%</span><br><small>X = {z_x:.3f}</small></div>""", unsafe_allow_html=True)
+
+    # Find Z from percentile using approximation (Abramowitz and Stegun)
+    st.divider()
+    st.subheader("🔁 Find X from Percentile")
+    p_input = st.slider("Percentile", 0.01, 99.99, 95.0, 0.01)
+    # Rational approximation for inverse normal CDF
+    def norm_ppf(p):
+        if p <= 0: return -8
+        if p >= 1: return 8
+        t = math.sqrt(-2 * math.log(1 - p)) if p > 0.5 else math.sqrt(-2 * math.log(p))
+        c = [2.515517, 0.802853, 0.010328]
+        d = [1.432788, 0.189269, 0.001308]
+        z = t - (c[0] + c[1]*t + c[2]*t**2) / (1 + d[0]*t + d[1]*t**2 + d[2]*t**3)
+        return z if p > 0.5 else -z
+    z_from_p = norm_ppf(p_input / 100)
+    x_from_p = mu + z_from_p * sigma
+    st.markdown(f"""<div class='result-box'><b>P(X ≤ x) = {p_input:.2f}%</b><br>
+        Z = {z_from_p:.4f} &nbsp;|&nbsp; X = {x_from_p:.4f}</div>""", unsafe_allow_html=True)
+
+    # PDF plot
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="PDF",
+                             line=dict(color="#6366f1", width=2)))
+    # Shade left tail
+    x_shade = x[x <= z_x]
+    y_shade = y[:len(x_shade)]
+    fig.add_trace(go.Scatter(x=np.concatenate([x_shade, [z_x]]),
+                             y=np.concatenate([y_shade, [0]]),
+                             fill="toself", fillcolor="rgba(99, 102, 241, 0.3)",
+                             line=dict(color="rgba(0,0,0,0)"), showlegend=False))
+    fig.add_vline(x=z_x, line=dict(color="#ef4444", width=2, dash="dash"),
+                  annotation_text=f"Z={z:.2f}")
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                      plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                      font_color="#ccc", xaxis_title="X", yaxis_title="Density",
+                      hovermode="x")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # CDF plot
+    cdf_y = np.array([0.5 * (1 + math.erf(v / math.sqrt(2))) for v in (x - mu) / sigma])
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=x, y=cdf_y, mode="lines", name="CDF",
+                              line=dict(color="#10b981", width=2)))
+    fig2.add_hline(y=area_left, line=dict(color="#ef4444", width=1, dash="dot"),
+                   annotation_text=f"P={area_left:.3f}")
+    fig2.update_layout(height=250, margin=dict(l=20, r=20, t=20, b=20),
+                       plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                       font_color="#ccc", xaxis_title="X", yaxis_title="Cumulative Probability")
+    st.plotly_chart(fig2, use_container_width=True)
+
+    # 68-95-99.7 rule
+    st.divider()
+    st.subheader("📏 68-95-99.7 Rule")
+    col_r1, col_r2, col_r3 = st.columns(3)
+    for i, (name, mult, color) in enumerate([
+        ("μ ± 1σ (68%)", 1, "#10b981"),
+        ("μ ± 2σ (95%)", 2, "#f59e0b"),
+        ("μ ± 3σ (99.7%)", 3, "#ef4444"),
+    ]):
+        lo, hi = mu - mult*sigma, mu + mult*sigma
+        area = 0.5 * (1 + math.erf(mult / math.sqrt(2))) - 0.5 * (1 + math.erf(-mult / math.sqrt(2)))
+        with [col_r1, col_r2, col_r3][i]:
+            st.markdown(f"""<div class='result-box' style='border-left:4px solid {color}'><b>{name}</b><br>
+                [{lo:.2f}, {hi:.2f}]<br>Area: {area*100:.1f}%</div>""", unsafe_allow_html=True)
+
+
+# ── Probability Basics ────────────────────────────────────
+elif topic == "Probability Basics":
+    st.markdown("## Probability Basics")
+    st.markdown("Compute permutations, combinations, and basic probabilities.")
+
+    tab_p, tab_c = st.tabs(["🎲 Permutations & Combinations", "🎯 Simple Probability"])
+
+    with tab_p:
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            n = st.number_input("n (total items)", min_value=1, max_value=100, value=10, step=1)
+        with col_p2:
+            r = st.number_input("r (chosen items)", min_value=1, max_value=100, value=3, step=1)
+
+        if r > n:
+            st.warning("r cannot be greater than n.")
+        else:
+            from math import perm, comb
+            perm_val = perm(int(n), int(r))
+            comb_val = comb(int(n), int(r))
+
+            col_r1, col_r2 = st.columns(2)
+            with col_r1:
+                st.markdown(f"""<div class='result-box'><b>Permutations</b><br>
+                    $P({int(n)}, {int(r)}) = \\frac{{{int(n)}!}}{{{int(n)-int(r)}!}}$<br>
+                    <span style='font-size:1.6em'>{perm_val:,}</span></div>""", unsafe_allow_html=True)
+            with col_r2:
+                st.markdown(f"""<div class='result-box'><b>Combinations</b><br>
+                    $C({int(n)}, {int(r)}) = \\frac{{{int(n)}!}}{{{int(r)}!({int(n)-int(r)})!}}$<br>
+                    <span style='font-size:1.6em'>{comb_val:,}</span></div>""", unsafe_allow_html=True)
+
+            st.latex(rf"P({int(n)}, {int(r)}) = \frac{{{int(n)}!}}{{({int(n)}-{int(r)})!}} = {perm_val:,}")
+            st.latex(rf"C({int(n)}, {int(r)}) = \frac{{{int(n)}!}}{{{int(r)}!({int(n)}-{int(r)})!}} = {comb_val:,}")
+
+    with tab_c:
+        st.markdown("**Simple Probability:** P(A) = favorable outcomes / total outcomes")
+        favorable = st.number_input("Favorable outcomes", min_value=0, max_value=1000000, value=1, step=1)
+        total = st.number_input("Total possible outcomes", min_value=1, max_value=1000000, value=6, step=1)
+
+        prob = favorable / total
+        st.markdown(f"""<div class='result-box'>
+            <b>P(A)</b> = {favorable} / {total} = <span style='font-size:1.6em'>{prob:.6f}</span>
+            <br><small>{prob*100:.4f}%</small>
+        </div>""", unsafe_allow_html=True)
+
+        # Probability scale
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=prob * 100,
+            number={"suffix": "%", "font": {"color": "#ccc"}},
+            gauge={
+                "axis": {"range": [0, 100], "tickfont": {"color": "#999"}, "ticksuffix": "%"},
+                "bar": {"color": "#6366f1"},
+                "steps": [{"range": [0, 25], "color": "#2a3a2a"},
+                          {"range": [25, 50], "color": "#3a3a2a"},
+                          {"range": [50, 75], "color": "#3a2a2a"},
+                          {"range": [75, 100], "color": "#4a1a1a"}],
+                "threshold": {"line": {"color": "white", "width": 4}, "value": prob * 100},
+            }
+        ))
+        fig.update_layout(height=300, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font_color="#ccc")
+        st.plotly_chart(fig, use_container_width=True)
+
+
+# ── Correlation & Regression ──────────────────────────────
+elif topic == "Correlation & Regression":
+    st.markdown("## Correlation & Regression")
+    st.markdown("Compute Pearson's r, interpret correlation, and fit a regression line.")
+
+    # Preset data
+    preset = st.selectbox("Sample data", [
+        "Custom",
+        "Strong positive (r≈0.98)",
+        "Weak positive (r≈0.4)",
+        "Negative (r≈-0.85)",
+        "No correlation (r≈0.05)",
+    ])
+
+    presets = {
+        "Strong positive (r≈0.98)": "1,2,3,4,5,6,7,8,9,10|2,4,6,8,10,12,14,16,18,20",
+        "Weak positive (r≈0.4)": "1,2,3,4,5,6,7,8,9,10|3,5,4,8,6,9,7,11,10,12",
+        "Negative (r≈-0.85)": "1,2,3,4,5,6,7,8,9,10|18,16,14,12,10,8,6,4,2,1",
+        "No correlation (r≈0.05)": "1,2,3,4,5,6,7,8,9,10|5,7,3,8,4,6,9,2,10,1",
+    }
+
+    if preset != "Custom":
+        default_x = presets[preset].split("|")[0]
+        default_y = presets[preset].split("|")[1]
+    else:
+        default_x = "1,2,3,4,5,6,7,8,9,10"
+        default_y = "2,4,6,8,10,12,14,16,18,20"
+
+    col_x, col_y = st.columns(2)
+    with col_x:
+        x_input = st.text_area("X values", value=default_x, height=60)
+    with col_y:
+        y_input = st.text_area("Y values", value=default_y, height=60)
+
+    try:
+        x_vals = np.array([float(v.strip()) for v in x_input.replace(",", " ").split() if v.strip()])
+        y_vals = np.array([float(v.strip()) for v in y_input.replace(",", " ").split() if v.strip()])
+    except ValueError:
+        st.error("Invalid numeric data.")
+        x_vals, y_vals = np.array([]), np.array([])
+
+    if len(x_vals) >= 3 and len(x_vals) == len(y_vals):
+        n = len(x_vals)
+        r_pearson = np.corrcoef(x_vals, y_vals)[0, 1]
+
+        # Regression: y = a + bx
+        x_mean, y_mean = np.mean(x_vals), np.mean(y_vals)
+        b = np.sum((x_vals - x_mean) * (y_vals - y_mean)) / np.sum((x_vals - x_mean)**2)
+        a = y_mean - b * x_mean
+
+        # R-squared
+        y_pred = a + b * x_vals
+        ss_res = np.sum((y_vals - y_pred)**2)
+        ss_tot = np.sum((y_vals - y_mean)**2)
+        r_squared = 1 - ss_res / ss_tot if ss_tot > 0 else 0
+
+        # Interpretation
+        abs_r = abs(r_pearson)
+        if abs_r >= 0.9:
+            strength = "Very Strong"
+        elif abs_r >= 0.7:
+            strength = "Strong"
+        elif abs_r >= 0.5:
+            strength = "Moderate"
+        elif abs_r >= 0.3:
+            strength = "Weak"
+        else:
+            strength = "Very Weak / None"
+        direction = "Positive" if r_pearson > 0 else "Negative" if r_pearson < 0 else "None"
+
+        col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+        with col_s1:
+            st.markdown(f"""<div class='result-box'><b>Pearson's r</b><br><span style='font-size:1.4em'>{r_pearson:.4f}</span></div>""", unsafe_allow_html=True)
+        with col_s2:
+            st.markdown(f"""<div class='result-box'><b>R²</b><br><span style='font-size:1.4em'>{r_squared:.4f}</span></div>""", unsafe_allow_html=True)
+        with col_s3:
+            st.markdown(f"""<div class='result-box'><b>Strength</b><br><span style='font-size:1.2em'>{strength}</span></div>""", unsafe_allow_html=True)
+        with col_s4:
+            st.markdown(f"""<div class='result-box'><b>Direction</b><br><span style='font-size:1.2em'>{direction}</span></div>""", unsafe_allow_html=True)
+
+        st.latex(rf"y = {a:.4f} + {b:.4f}x")
+
+        # Scatter + regression line
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers", name="Data",
+                                 marker=dict(size=8, color="#6366f1", opacity=0.8)))
+        x_line = np.linspace(min(x_vals), max(x_vals), 100)
+        y_line = a + b * x_line
+        fig.add_trace(go.Scatter(x=x_line, y=y_line, mode="lines", name=f"y = {a:.2f} + {b:.2f}x",
+                                 line=dict(color="#ef4444", width=2)))
+        fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                          font_color="#ccc", hovermode="x",
+                          xaxis_title="X", yaxis_title="Y")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Data table
+        df_corr = pd.DataFrame({"X": x_vals, "Y": y_vals, "Ŷ": y_pred.round(4), "Residual": (y_vals - y_pred).round(4)})
+        with st.expander("📋 Data & Residuals"):
+            st.dataframe(df_corr, use_container_width=True, hide_index=True)
+    elif len(x_vals) != len(y_vals):
+        st.warning("X and Y must have the same number of values.")
+    else:
+        st.info("Enter at least 3 data points for X and Y.")
+
+
+# ── Box Plot & Outliers ───────────────────────────────────
+elif topic == "Box Plot & Outliers":
+    st.markdown("## Box Plot & Outliers")
+    st.markdown("Visualize the five-number summary, IQR, and detect outliers.")
+
+    data_input = st.text_area("Enter numbers",
+                               value="12, 15, 14, 10, 18, 22, 14, 16, 15, 13, 17, 45, 11, 14, 16, 9, 13, 15, 14, 16",
+                               height=80)
+
+    try:
+        data = [float(x.strip()) for x in data_input.replace(",", " ").split() if x.strip()]
+    except ValueError:
+        st.error("Invalid input.")
+        data = []
+
+    if len(data) >= 5:
+        data_sorted = sorted(data)
+        q1 = np.percentile(data, 25)
+        q2 = np.median(data)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+        outliers = [v for v in data if v < lower_fence or v > upper_fence]
+        non_outliers = [v for v in data if lower_fence <= v <= upper_fence]
+
+        whisker_low = min(non_outliers) if non_outliers else q1
+        whisker_high = max(non_outliers) if non_outliers else q3
+
+        col_b1, col_b2, col_b3 = st.columns(3)
+        with col_b1:
+            st.markdown(f"""<div class='result-box'><b>Min</b><br>{min(data):.2f}</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Q₁</b><br>{q1:.2f}</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Median</b><br>{q2:.2f}</div>""", unsafe_allow_html=True)
+        with col_b2:
+            st.markdown(f"""<div class='result-box'><b>Q₃</b><br>{q3:.2f}</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Max</b><br>{max(data):.2f}</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>IQR</b><br>{iqr:.2f}</div>""", unsafe_allow_html=True)
+        with col_b3:
+            st.markdown(f"""<div class='result-box' style='border-left:4px solid #ef4444'><b>Outliers</b><br>
+                {len(outliers)} found<br><small>{', '.join(f'{v:.2f}' for v in outliers[:5])}{'...' if len(outliers) > 5 else ''}</small></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class='result-box'><b>Fences</b><br>[{lower_fence:.2f}, {upper_fence:.2f}]</div>""", unsafe_allow_html=True)
+
+        # Box plot
+        fig = go.Figure()
+        fig.add_trace(go.Box(y=data, name="Data", boxmean="sd",
+                              marker_color="#6366f1", line_color="#818cf8",
+                              fillcolor="rgba(99,102,241,0.3)"))
+        fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                          font_color="#ccc", yaxis_title="Value")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Histogram with fences
+        fig2 = go.Figure()
+        fig2.add_trace(go.Histogram(x=data, nbinsx=min(20, len(data)), marker_color="#6366f1", opacity=0.7))
+        fig2.add_vline(x=lower_fence, line=dict(color="#ef4444", width=2, dash="dash"),
+                       annotation_text="Lower fence")
+        fig2.add_vline(x=upper_fence, line=dict(color="#ef4444", width=2, dash="dash"),
+                       annotation_text="Upper fence")
+        for o in outliers:
+            fig2.add_vline(x=o, line=dict(color="#f59e0b", width=1, dash="dot"),
+                           annotation_text=f"{o:.1f}*")
+        fig2.update_layout(height=300, margin=dict(l=20, r=20, t=20, b=20),
+                           plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                           font_color="#ccc", xaxis_title="Value", yaxis_title="Frequency")
+        st.plotly_chart(fig2, use_container_width=True)
+    else:
+        st.info("Enter at least 5 numeric values.")
+
+
+# ── Central Tendency Viz ─────────────────────────────────
+elif topic == "Central Tendency Viz":
+    st.markdown("## Central Tendency Visualization")
+    st.markdown("Compare mean, median, and mode on a distribution — visualize skewness.")
+
+    dist_type = st.radio("Distribution", [
+        "Symmetric (Normal)",
+        "Right-skewed (Positive)",
+        "Left-skewed (Negative)",
+        "Bimodal",
+        "Custom Data",
+    ], horizontal=True)
+
+    def calc_skew(data):
+        n = len(data)
+        if n < 3:
+            return 0
+        mean = np.mean(data)
+        m2 = np.sum((data - mean)**2) / n
+        m3 = np.sum((data - mean)**3) / n
+        return m3 / (m2**1.5) if m2 > 0 else 0
+
+    if dist_type == "Custom Data":
+        data_input = st.text_area("Enter numbers",
+                                   value="1,2,2,3,3,3,4,4,5,5,5,6,6,7,8,9,10", height=60)
+        try:
+            data = np.array([float(x.strip()) for x in data_input.replace(",", " ").split() if x.strip()])
+        except ValueError:
+            data = np.array([])
+
+        if len(data) < 5:
+            st.info("Enter at least 5 numbers.")
+            st.stop()
+
+        x_dense = np.linspace(min(data), max(data), 200)
+        # Use KDE approximation via histogram
+        counts, edges = np.histogram(data, bins="auto", density=True)
+        bin_centers = (edges[:-1] + edges[1:]) / 2
+        y_dense = counts  # for histogram display
+        mean_val = np.mean(data)
+        median_val = np.median(data)
+        skew_val = calc_skew(data)
+        plot_x = data
+        plot_type = "histogram"
+    else:
+        np.random.seed(42)
+        n_samples = 2000
+
+        if "Symmetric" in dist_type:
+            data = np.random.normal(50, 10, n_samples)
+            mean_val = 50; median_val = 50; skew_val = 0
+            bins = 40
+        elif "Right-skewed" in dist_type:
+            data = np.random.chisquare(3, n_samples) * 5 + 20
+            mean_val = np.mean(data); median_val = np.median(data); skew_val = calc_skew(data)
+            bins = 40
+        else:  # Left-skewed
+            data = 100 - np.random.chisquare(3, n_samples) * 5
+            mean_val = np.mean(data); median_val = np.median(data); skew_val = calc_skew(data)
+            bins = 40
+
+        plot_type = "distribution"
+
+    # Compute mode using KDE approximation (numpy histogram method)
+    try:
+        kde_counts, kde_edges = np.histogram(data, bins=min(50, len(data)//2), density=True)
+        kde_centers = (kde_edges[:-1] + kde_edges[1:]) / 2
+        mode_val = kde_centers[np.argmax(kde_counts)]
+        # Smooth KDE curve using gaussian filter on histogram
+        x_kde = np.linspace(min(data), max(data), 500)
+        y_kde = np.zeros_like(x_kde)
+        bw = (max(data) - min(data)) / 40  # bandwidth
+        if bw > 0:
+            for d in data:
+                y_kde += np.exp(-0.5 * ((x_kde - d) / bw)**2) / (bw * math.sqrt(2 * math.pi))
+            y_kde /= len(data)
+    except:
+        mode_val = median_val
+        y_kde = None
+
+    # Results
+    col_t1, col_t2, col_t3 = st.columns(3)
+    with col_t1:
+        st.markdown(f"""<div class='result-box' style='border-left:4px solid #10b981'><b>Mean</b><br><span style='font-size:1.4em'>{mean_val:.3f}</span></div>""", unsafe_allow_html=True)
+    with col_t2:
+        st.markdown(f"""<div class='result-box' style='border-left:4px solid #f59e0b'><b>Median</b><br><span style='font-size:1.4em'>{median_val:.3f}</span></div>""", unsafe_allow_html=True)
+    with col_t3:
+        st.markdown(f"""<div class='result-box' style='border-left:4px solid #ef4444'><b>Mode (approx)</b><br><span style='font-size:1.4em'>{mode_val:.3f}</span></div>""", unsafe_allow_html=True)
+
+    # Skewness indicator
+    skew_color = "#10b981" if abs(skew_val) < 0.3 else "#f59e0b" if abs(skew_val) < 1.0 else "#ef4444"
+    skew_label = "Symmetric" if abs(skew_val) < 0.3 else "Moderate Skew" if abs(skew_val) < 1.0 else "Highly Skewed"
+    skew_dir = "Right (+)" if skew_val > 0 else "Left (−)" if skew_val < 0 else "None"
+    st.markdown(f"""<div class='result-box' style='border-left:4px solid {skew_color}'>
+        <b>Skewness</b>: {skew_val:.4f} &nbsp;|&nbsp; <b>Direction</b>: {skew_dir} &nbsp;|&nbsp; <b>Interpretation</b>: {skew_label}</div>""", unsafe_allow_html=True)
+
+    # Distribution plot
+    fig = go.Figure()
+
+    if plot_type == "histogram":
+        fig.add_trace(go.Histogram(x=plot_x, nbinsx=min(20, len(np.unique(data))),
+                                    marker_color="#6366f1", opacity=0.6, name="Data"))
+    else:
+        fig.add_trace(go.Histogram(x=data, nbinsx=bins, histnorm="probability density",
+                                    marker_color="#6366f1", opacity=0.5, name="Histogram"))
+        if y_kde is not None:
+            fig.add_trace(go.Scatter(x=x_kde, y=y_kde, mode="lines", name="KDE",
+                                     line=dict(color="#818cf8", width=2)))
+
+    # Markers for mean, median, mode
+    max_y = max(np.histogram(data, bins=20)[0]) if plot_type == "histogram" else 1
+    y_pos = max_y * 0.9
+    fig.add_vline(x=mean_val, line=dict(color="#10b981", width=2, dash="dash"),
+                  annotation_text=f"μ={mean_val:.2f}")
+    fig.add_vline(x=median_val, line=dict(color="#f59e0b", width=2, dash="dot"),
+                  annotation_text=f"M={median_val:.2f}")
+    fig.add_vline(x=mode_val, line=dict(color="#ef4444", width=2, dash="longdash"),
+                  annotation_text=f"Mo={mode_val:.2f}")
+
+    fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
+                      plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                      font_color="#ccc", xaxis_title="Value", yaxis_title="Density / Frequency",
+                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Relationship guide
+    st.divider()
+    st.markdown("""
+    **📖 Relationship between Mean, Median, and Skewness:**
+    - **Symmetric:** Mean ≈ Median ≈ Mode
+    - **Right-skewed (Positive):** Mean > Median > Mode
+    - **Left-skewed (Negative):** Mean < Median < Mode
+    """)
+
+
 # ── FOOTER ────────────────────────────────────────────────
 st.markdown("---")
 st.caption("Built with Python · Streamlit · Plotly · NumPy")
