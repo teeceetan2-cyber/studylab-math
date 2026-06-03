@@ -2322,7 +2322,7 @@ elif topic == "3D Geometry":
         x = r * np.sin(theta) * np.cos(phi)
         y = r * np.sin(theta) * np.sin(phi)
         z = r * np.cos(theta)
-        fig.add_trace(go.Surface(x=x, y=y, z=z, colorscale="Viridis", opacity=0.85, showscale=False))
+        fig.add_trace(go.Surface(x=x, y=y, z=z, colorscale=[[0, '#888888'], [1, '#cccccc']], opacity=0.85, showscale=False))
         dim_line(fig, 0, 0, 0, r, 0, 0, dim_color_r, 3)
         fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[0], mode="markers",
                                     marker=dict(size=4, color="white"), hoverinfo="none", showlegend=False))
@@ -2420,7 +2420,7 @@ elif topic == "3D Geometry":
         tc = np.linspace(0, 2*np.pi, 40)
         tc, zc = np.meshgrid(tc, zc)
         fig.add_trace(go.Surface(x=r*np.cos(tc), y=r*np.sin(tc), z=zc,
-                                  colorscale="Turbo", opacity=0.85, showscale=False))
+                                  colorscale=[[0, '#888888'], [1, '#cccccc']], opacity=0.85, showscale=False))
         dim_line(fig, 0, 0, -h/2, r, 0, -h/2, dim_color_r, 2)
         label_3d(fig, r/2, -0.4, -h/2-0.4, "r", dim_color_r, 16)
         dim_line(fig, r+0.5, 0, -h/2, r+0.5, 0, h/2, dim_color_h, 2)
@@ -2437,7 +2437,7 @@ elif topic == "3D Geometry":
         tc2, zc2 = np.meshgrid(np.linspace(0, 2*np.pi, n), np.linspace(0, h, n))
         rc = r * (1 - zc2 / h)
         fig.add_trace(go.Surface(x=rc*np.cos(tc2), y=rc*np.sin(tc2), z=zc2,
-                                  colorscale="Electric", opacity=0.85, showscale=False))
+                                  colorscale=[[0, '#888888'], [1, '#cccccc']], opacity=0.85, showscale=False))
         dim_line(fig, 0, 0, 0, r, 0, 0, dim_color_r, 2)
         label_3d(fig, r/2, -0.4, -0.4, "r", dim_color_r, 16)
         dim_line(fig, 0, 0, 0, 0, 0, h, dim_color_h, 2)
