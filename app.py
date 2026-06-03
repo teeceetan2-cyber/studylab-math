@@ -2323,7 +2323,7 @@ elif topic == "3D Geometry":
         y = r * np.sin(theta) * np.sin(phi)
         z = r * np.cos(theta)
         fig.add_trace(go.Surface(x=x, y=y, z=z, colorscale=[[0, '#888888'], [1, '#cccccc']], opacity=0.85, showscale=False))
-        dim_line(fig, 0, 0, 0, r, 0, 0, dim_color_r, 3)
+        dim_line(fig, 0, 0, 0, r, 0, 0, dim_color_r, 6)
         fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[0], mode="markers",
                                     marker=dict(size=4, color="white"), hoverinfo="none", showlegend=False))
         label_3d(fig, r/2, 0, -0.4, "r", dim_color_r, 16)
@@ -2421,9 +2421,9 @@ elif topic == "3D Geometry":
         tc, zc = np.meshgrid(tc, zc)
         fig.add_trace(go.Surface(x=r*np.cos(tc), y=r*np.sin(tc), z=zc,
                                   colorscale=[[0, '#888888'], [1, '#cccccc']], opacity=0.85, showscale=False))
-        dim_line(fig, 0, 0, -h/2, r, 0, -h/2, dim_color_r, 2)
+        dim_line(fig, 0, 0, -h/2, r, 0, -h/2, dim_color_r, 6)
         label_3d(fig, r/2, -0.4, -h/2-0.4, "r", dim_color_r, 16)
-        dim_line(fig, r+0.5, 0, -h/2, r+0.5, 0, h/2, dim_color_h, 2)
+        dim_line(fig, r+0.5, 0, -h/2, r+0.5, 0, h/2, dim_color_h, 6)
         label_3d(fig, r+0.5, 0, 0, "h", dim_color_h, 16)
         st.latex(r"V = \pi r^2 h  \quad A = 2\pi r(h+r)")
         c1, c2 = st.columns(2)
@@ -2438,9 +2438,9 @@ elif topic == "3D Geometry":
         rc = r * (1 - zc2 / h)
         fig.add_trace(go.Surface(x=rc*np.cos(tc2), y=rc*np.sin(tc2), z=zc2,
                                   colorscale=[[0, '#888888'], [1, '#cccccc']], opacity=0.85, showscale=False))
-        dim_line(fig, 0, 0, 0, r, 0, 0, dim_color_r, 2)
+        dim_line(fig, 0, 0, 0, r, 0, 0, dim_color_r, 6)
         label_3d(fig, r/2, -0.4, -0.4, "r", dim_color_r, 16)
-        dim_line(fig, 0, 0, 0, 0, 0, h, dim_color_h, 2)
+        dim_line(fig, 0, 0, 0, 0, 0, h, dim_color_h, 6)
         label_3d(fig, 0.4, 0, h/2, "h", dim_color_h, 16)
         sl = math.sqrt(r**2 + h**2)
         dim_line(fig, r, 0, 0, 0, 0, h, "#a855f7", 2)
