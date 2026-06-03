@@ -2296,6 +2296,8 @@ elif topic == "3D Geometry":
 
     shape = st.selectbox("Shape", [
         "Sphere", "Cube", "Pyramid", "Prism",
+        "Trapezoid Prism", "Pentagon Prism", "Hexagon Prism",
+        "Triangular Pyramid", "Pentagon Pyramid", "Hexagon Pyramid",
         "Cylinder", "Cone", "Torus", "Helix", "Sinusoidal Surface"
     ])
 
@@ -2313,6 +2315,46 @@ elif topic == "3D Geometry":
         fig.add_trace(go.Scatter3d(x=[x1, x2], y=[y1, y2], z=[z1, z2],
                                     mode="lines", line=dict(color=color, width=width, dash="dash"),
                                     hoverinfo="none", showlegend=False))
+
+    def polygon_verts(n, r, z=0):
+        return [[r * math.cos(2*math.pi*i/n), r * math.sin(2*math.pi*i/n), z] for i in range(n)]
+
+    def add_polygon_prism(fig, verts_bot, verts_top, color="#6366f1", marker_color="#ef4444"):
+        v = verts_bot + verts_top
+        n = len(verts_bot)
+        edges = []
+        for i in range(n):
+            edges.append([i, (i+1)%n])
+            edges.append([n+i, n+((i+1)%n)])
+            edges.append([i, n+i])
+        ex, ey, ez = [], [], []
+        for a, b in edges:
+            ex += [v[a][0], v[b][0], None]
+            ey += [v[a][1], v[b][1], None]
+            ez += [v[a][2], v[b][2], None]
+        fig.add_trace(go.Scatter3d(x=ex, y=ey, z=ez, mode="lines",
+                                    line=dict(color=color, width=4), hoverinfo="none", showlegend=False))
+        fig.add_trace(go.Scatter3d(x=[p[0] for p in v], y=[p[1] for p in v],
+                                    z=[p[2] for p in v], mode="markers",
+                                    marker=dict(size=5, color=marker_color), hoverinfo="none", showlegend=False))
+
+    def add_pyramid(fig, verts_base, apex, color="#f59e0b", marker_color="#ef4444"):
+        v = verts_base + [apex]
+        n = len(verts_base)
+        edges = []
+        for i in range(n):
+            edges.append([i, (i+1)%n])
+            edges.append([i, n])
+        ex, ey, ez = [], [], []
+        for a, b in edges:
+            ex += [v[a][0], v[b][0], None]
+            ey += [v[a][1], v[b][1], None]
+            ez += [v[a][2], v[b][2], None]
+        fig.add_trace(go.Scatter3d(x=ex, y=ey, z=ez, mode="lines",
+                                    line=dict(color=color, width=4), hoverinfo="none", showlegend=False))
+        fig.add_trace(go.Scatter3d(x=[p[0] for p in v], y=[p[1] for p in v],
+                                    z=[p[2] for p in v], mode="markers",
+                                    marker=dict(size=5, color=marker_color), hoverinfo="none", showlegend=False))
 
     fig = go.Figure()
 
@@ -2505,6 +2547,125 @@ elif topic == "3D Geometry":
         dim_line(fig, 0, 0, 0, 0, 0, amp, dim_color_h, 2)
         label_3d(fig, 0.5, 0, amp/2, "A", dim_color_h, 16)
         st.latex(r"z = A\sin\left(f\sqrt{x^2+y^2}\right)")
+
+    elif shape == "Trapezoid Prism":
+        bot_w = st.slider("Bottom width", 1.0, 6.0, 3.0, 0.1)
+        top_w = st.slider("Top width", 0.5, 5.0, 1.5, 0.1)
+        trap_h = st.slider("Trapezoid height", 1.0, 5.0, 2.0, 0.1)
+        pr_h = st.slider("Prism height", 1.0, 6.0, 3.0, 0.1)
+        hb, ht, hh = bot_w/2, top_w/2, trap_h/2
+        bot = [[-hb, -hh, 0], [hb, -hh, 0], [ht, hh, 0], [-ht, hh, 0]]
+        top = [[-hb, -hh, pr_h], [hb, -hh, pr_h], [ht, hh, pr_h], [-ht, hh, pr_h]]
+        add_polygon_prism(fig, bot, top, "#8b5cf6")
+        dim_line(fig, -hb, -hh-0.8, 0, hb, -hh-0.8, 0, dim_color_s, 2)
+        label_3d(fig, 0, -hh-0.8, 0, "b", dim_color_s, 16)
+        dim_line(fig, -ht, hh+0.8, 0, ht, hh+0.8, 0, dim_color_s, 2)
+        label_3d(fig, 0, hh+0.8, 0, "t", dim_color_s, 16)
+        dim_line(fig, hb+0.8, -hh, 0, hb+0.8, -hh, pr_h, dim_color_h, 2)
+        label_3d(fig, hb+0.8, -hh, pr_h/2, "h", dim_color_h, 16)
+        area = (bot_w+top_w)*trap_h/2
+        vol = area*pr_h
+        slant = math.sqrt(((bot_w-top_w)/2)**2 + trap_h**2)
+        sa = 2*area + (bot_w+top_w+2*slant)*pr_h
+        st.latex(r"V = \frac{b+t}{2} \cdot h_t \cdot h_p")
+        c1, c2 = st.columns(2)
+        with c1: st.metric("Surface Area", f"{sa:.2f}")
+        with c2: st.metric("Volume", f"{vol:.2f}")
+
+    elif shape == "Pentagon Prism":
+        r = st.slider("Circumradius", 0.5, 4.0, 2.0, 0.1)
+        pr_h = st.slider("Height", 1.0, 6.0, 3.0, 0.1)
+        n = 5
+        bot = polygon_verts(n, r, 0)
+        top = polygon_verts(n, r, pr_h)
+        add_polygon_prism(fig, bot, top, "#06b6d4")
+        dim_line(fig, 0, 0, 0, r, 0, 0, dim_color_R, 2)
+        label_3d(fig, r/2, -0.5, 0, "R", dim_color_R, 16)
+        dim_line(fig, r+0.6, 0, 0, r+0.6, 0, pr_h, dim_color_h, 2)
+        label_3d(fig, r+0.6, 0, pr_h/2, "h", dim_color_h, 16)
+        s = 2*r*math.sin(math.pi/n)
+        a_base = (n/4)*s**2 / math.tan(math.pi/n) if n > 2 else 0
+        vol = a_base*pr_h
+        sa = 2*a_base + n*s*pr_h
+        st.latex(r"V = \frac{5}{4}s^2\cot(\frac{\pi}{5})\cdot h")
+        c1, c2 = st.columns(2)
+        with c1: st.metric("Surface Area", f"{sa:.2f}")
+        with c2: st.metric("Volume", f"{vol:.2f}")
+
+    elif shape == "Hexagon Prism":
+        r = st.slider("Circumradius", 0.5, 4.0, 2.0, 0.1)
+        pr_h = st.slider("Height", 1.0, 6.0, 3.0, 0.1)
+        n = 6
+        bot = polygon_verts(n, r, 0)
+        top = polygon_verts(n, r, pr_h)
+        add_polygon_prism(fig, bot, top, "#84cc16")
+        dim_line(fig, 0, 0, 0, r, 0, 0, dim_color_R, 2)
+        label_3d(fig, r/2, -0.5, 0, "R", dim_color_R, 16)
+        dim_line(fig, r+0.6, 0, 0, r+0.6, 0, pr_h, dim_color_h, 2)
+        label_3d(fig, r+0.6, 0, pr_h/2, "h", dim_color_h, 16)
+        s = 2*r*math.sin(math.pi/n)
+        a_base = (3*math.sqrt(3)/2)*s**2 if n == 6 else (n/4)*s**2/math.tan(math.pi/n)
+        vol = a_base*pr_h
+        sa = 2*a_base + n*s*pr_h
+        st.latex(r"V = \frac{3\sqrt{3}}{2}s^2 \cdot h")
+        c1, c2 = st.columns(2)
+        with c1: st.metric("Surface Area", f"{sa:.2f}")
+        with c2: st.metric("Volume", f"{vol:.2f}")
+
+    elif shape == "Triangular Pyramid":
+        r = st.slider("Circumradius", 0.5, 4.0, 2.0, 0.1)
+        pyr_h = st.slider("Height", 1.0, 6.0, 3.0, 0.1)
+        n = 3
+        base_verts = polygon_verts(n, r, 0)
+        apex = [0, 0, pyr_h]
+        add_pyramid(fig, base_verts, apex, "#ec4899")
+        dim_line(fig, 0, 0, 0, 0, 0, pyr_h, dim_color_h, 2)
+        label_3d(fig, 0.4, 0, pyr_h/2, "h", dim_color_h, 16)
+        s = 2*r*math.sin(math.pi/n)
+        a_base = (math.sqrt(3)/4)*s**2
+        vol = a_base*pyr_h/3
+        slant = math.sqrt(pyr_h**2 + r**2)
+        sa = a_base + 3*(0.5*s*slant)
+        st.latex(r"V = \frac{1}{3} \cdot \frac{\sqrt{3}}{4}s^2 \cdot h")
+        c1, c2 = st.columns(2)
+        with c1: st.metric("Surface Area", f"{sa:.2f}")
+        with c2: st.metric("Volume", f"{vol:.2f}")
+
+    elif shape == "Pentagon Pyramid":
+        r = st.slider("Circumradius", 0.5, 4.0, 2.0, 0.1)
+        pyr_h = st.slider("Height", 1.0, 6.0, 3.0, 0.1)
+        n = 5
+        base_verts = polygon_verts(n, r, 0)
+        apex = [0, 0, pyr_h]
+        add_pyramid(fig, base_verts, apex, "#f97316")
+        dim_line(fig, 0, 0, 0, 0, 0, pyr_h, dim_color_h, 2)
+        label_3d(fig, 0.4, 0, pyr_h/2, "h", dim_color_h, 16)
+        s = 2*r*math.sin(math.pi/n)
+        a_base = (n/4)*s**2 / math.tan(math.pi/n)
+        vol = a_base*pyr_h/3
+        sa = a_base + n*(0.5*s*math.sqrt(pyr_h**2 + r**2))
+        st.latex(r"V = \frac{5}{12}s^2\cot(\frac{\pi}{5})\cdot h")
+        c1, c2 = st.columns(2)
+        with c1: st.metric("Surface Area", f"{sa:.2f}")
+        with c2: st.metric("Volume", f"{vol:.2f}")
+
+    elif shape == "Hexagon Pyramid":
+        r = st.slider("Circumradius", 0.5, 4.0, 2.0, 0.1)
+        pyr_h = st.slider("Height", 1.0, 6.0, 3.0, 0.1)
+        n = 6
+        base_verts = polygon_verts(n, r, 0)
+        apex = [0, 0, pyr_h]
+        add_pyramid(fig, base_verts, apex, "#a855f7")
+        dim_line(fig, 0, 0, 0, 0, 0, pyr_h, dim_color_h, 2)
+        label_3d(fig, 0.4, 0, pyr_h/2, "h", dim_color_h, 16)
+        s = 2*r*math.sin(math.pi/n)
+        a_base = (3*math.sqrt(3)/2)*s**2
+        vol = a_base*pyr_h/3
+        sa = a_base + n*(0.5*s*math.sqrt(pyr_h**2 + r**2))
+        st.latex(r"V = \frac{\sqrt{3}}{2}s^2 \cdot h")
+        c1, c2 = st.columns(2)
+        with c1: st.metric("Surface Area", f"{sa:.2f}")
+        with c2: st.metric("Volume", f"{vol:.2f}")
 
     fig.update_layout(
         height=550,
