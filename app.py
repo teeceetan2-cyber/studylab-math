@@ -2080,6 +2080,26 @@ elif topic == "Plane Vectors":
                 marker=dict(size=6, color="#f59e0b"),
                 name="Plane center",
             ))
+            # Several sample points on the plane (3×3 grid)
+            grid_pts = np.linspace(-4, 4, 5)  # 5×5 = 25 points
+            if abs(c) > 0.001:
+                px, py = np.meshgrid(grid_pts, grid_pts)
+                pz = (-a * px - b * py - d) / c
+            elif abs(b) > 0.001:
+                px, pz = np.meshgrid(grid_pts, grid_pts)
+                py = (-a * px - c * pz - d) / b
+            elif abs(a) > 0.001:
+                py, pz = np.meshgrid(grid_pts, grid_pts)
+                px = (-b * py - c * pz - d) / a
+            else:
+                px = py = pz = np.zeros((5, 5))
+            fig.add_trace(go.Scatter3d(
+                x=px.flatten(), y=py.flatten(), z=pz.flatten(),
+                mode="markers",
+                marker=dict(size=3, color="white", symbol="circle"),
+                name="Points on plane",
+                showlegend=True,
+            ))
             # Right-angle indicator: small square at the intersection
             # Small offset along plane tangent
             tick = 0.3
@@ -2205,6 +2225,20 @@ elif topic == "Plane Vectors":
                 x=[a0], y=[a1], z=[a2],
                 mode="markers", marker=dict(size=6, color="#f59e0b"),
                 name=f"a({a0:.1f}, {a1:.1f}, {a2:.1f})",
+            ))
+            # Several sample points on the plane at different (λ, μ) values
+            lambda_vals = np.linspace(-2, 2, 5)
+            mu_vals = np.linspace(-2, 2, 5)
+            lv, mv = np.meshgrid(lambda_vals, mu_vals)
+            pt_x = a0 + lv * b0 + mv * c0
+            pt_y = a1 + lv * b1 + mv * c1
+            pt_z = a2 + lv * b2 + mv * c2
+            fig.add_trace(go.Scatter3d(
+                x=pt_x.flatten(), y=pt_y.flatten(), z=pt_z.flatten(),
+                mode="markers",
+                marker=dict(size=3, color="white", symbol="circle"),
+                name="Points on plane",
+                showlegend=True,
             ))
             # Vector b from a
             fig.add_trace(go.Scatter3d(
